@@ -1,5 +1,5 @@
 // --- State Management (formerly state.js) ---
-const NUI_EXTRA_DELAY = 10; // Minimal delay for NUI interactions
+const NUI_EXTRA_DELAY = 50; // Minimal delay for NUI interactions
 
 const state = {
     NUI_EXTRA_DELAY: NUI_EXTRA_DELAY,
