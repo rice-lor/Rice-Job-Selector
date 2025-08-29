@@ -107,10 +107,11 @@ async function selectJob(jobName) {
 
     try {
         // Step 1: Send the direct command to open the main menu
+        // Corrected type based on the provided script snippet
         if (typeof nui !== 'undefined' && typeof nui.log === 'function') {
             nui.log(`~y~[RJS]~w~ Sending command to open Main Menu...`);
         }
-        window.parent.postMessage({ type: "sendCommand", command: "openMainMenu" }, '*');
+        window.parent.postMessage({ type: "openMainMenu" }, '*'); // Changed from sendCommand
         await nui.sleep(state.NUI_EXTRA_DELAY * 5); // Give game time to process command
 
         const executionActions = [];
@@ -136,7 +137,7 @@ async function selectJob(jobName) {
             if (typeof nui !== 'undefined' && typeof nui.log === 'function') {
                 nui.log(`~y~[RJS]~w~ Re-sending command to open Main Menu for PDA...`);
             }
-            window.parent.postMessage({ type: "sendCommand", command: "openMainMenu" }, '*');
+            window.parent.postMessage({ type: "openMainMenu" }, '*'); // Changed from sendCommand
             await nui.sleep(state.NUI_EXTRA_DELAY * 5); // Give game time to process command
 
             executionActions.push(

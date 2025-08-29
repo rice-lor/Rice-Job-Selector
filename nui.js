@@ -30,7 +30,6 @@ async function sleepUntil(check, retries, timeout, errorMsg) {
         await sleep(timeout);
         currentRetries--;
         // In a real NUI environment, cache.menu_choices would be updated by game messages.
-        // For standalone testing, you'd manually manipulate 'cache' for different states.
     }
     await sleep(state.NUI_EXTRA_DELAY); // Simulate extra delay after condition met
     return true;
@@ -63,52 +62,34 @@ async function submitPrompt(value) {
 // Minimal executeActions function
 export async function executeActions(executionActions, autoCloseMenu = true) {
     try {
-        // Simulate NUI actions
         console.log("Simulating NUI executeActions...");
         
-        // For testing purposes, manually set initial menu state if needed
-        // For example, to simulate 'Phone / Services' being open:
-        // cache.menu_open = true;
-        // cache.menu_choices = [['Phone / Services'], ['Another Option']];
-        // You'd need to simulate subsequent menu_choices based on the expected flow.
-
         for (const { actions, amount } of executionActions) {
             for (const { action, mod } of actions) {
-                // Simulate waiting for the menu to be open and choice available
                 console.log(`  Waiting for menu option: '${action}'`);
-                // For a real test, you'd need to ensure 'cache.menu_open' and 'cache.menu_choices'
-                // are updated by the game client to reflect the menu state.
-                // For this minimal setup, we'll assume the option is always available for demonstration.
-                // In a real scenario, this sleepUntil would rely on actual game messages.
                 
-                // Simplified sleepUntil for minimal testing:
-                await sleep(state.NUI_EXTRA_DELAY * 2); // Simulate some processing time
-                
-                // In a full NUI app, this would be:
-                // await sleepUntil(
-                //     () => cache.menu_open && (cache.menu_choices ?? []).findIndex(
-                //         (a) => (a ?? [])[0]?.replace(/(<.+?>)|(&#.+?;)/g, '') === action
-                //     ) !== -1,
-                //     300, // NUI_RETRIES
-                //     10,  // NUI_TIMEOUT
-                //     `Could not find option '${action}' in menu, exiting...`
-                // );
+                // This is where we need the cache to be updated by the game.
+                // For manual testing, you'd call simulateNuiMenu in the console.
+                await sleepUntil(
+                    () => cache.menu_open && (cache.menu_choices ?? []).findIndex(
+                        (a) => (a ?? [])[0]?.replace(/(<.+?>)|(&#.+?;)/g, '') === action
+                    ) !== -1,
+                    300, // NUI_RETRIES (from original state.js)
+                    10,  // NUI_TIMEOUT (from original state.js)
+                    `Could not find option '${action}' in menu, exiting...`
+                );
 
                 await submitMenu(action, mod); // Simulate sending the choice
             }
 
             if (amount > 0) {
                 console.log(`  Waiting for prompt to enter amount: ${amount}`);
-                // Simplified sleepUntil for minimal testing:
-                await sleep(state.NUI_EXTRA_DELAY * 2); // Simulate some processing time
-                
-                // In a full NUI app, this would be:
-                // await sleepUntil(
-                //     () => cache.prompt === true,
-                //     300, // NUI_RETRIES
-                //     10,  // NUI_TIMEOUT
-                //     'Could not find prompt, exiting...'
-                // );
+                await sleepUntil(
+                    () => cache.prompt === true,
+                    300, // NUI_RETRIES
+                    10,  // NUI_TIMEOUT
+                    'Could not find prompt, exiting...'
+                );
                 await submitPrompt(amount); // Simulate submitting the amount
             }
             await sleep(state.NUI_EXTRA_DELAY);
@@ -124,6 +105,15 @@ export async function executeActions(executionActions, autoCloseMenu = true) {
         return false;
     }
     return true;
+}
+
+// Helper function to simulate NUI menu opening for testing
+// Call this in your browser console to simulate the game opening a menu
+export function simulateNuiMenu(menuName, choicesArray, isPrompt = false) {
+    console.log(`[SIMULATING NUI] Menu '${menuName}' opened with choices:`, choicesArray);
+    cache.menu_open = true;
+    cache.menu_choices = choicesArray.map(choice => [choice]); // Format as array of arrays
+    cache.prompt = isPrompt;
 }
 
 // Export cache for external manipulation during testing if needed
