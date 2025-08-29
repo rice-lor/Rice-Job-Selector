@@ -173,10 +173,16 @@ async function selectJob(jobName) {
     }
 }
 
+// Function to reload the page
+function reloadPage() {
+    window.location.reload();
+}
+
 // Attach functions to the window object for HTML access
 window.openJobSelectionMenu = openJobSelectionMenu;
 window.closeJobSelectionMenu = closeJobSelectionMenu;
 window.selectJob = selectJob;
+window.reloadPage = reloadPage; // Make reloadPage globally accessible
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("Script loaded and DOM content parsed."); // Confirm script loading
