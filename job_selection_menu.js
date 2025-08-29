@@ -11,7 +11,14 @@ const state = {
 const cache = {
     menu_open: false,
     menu_choices: [],
-    prompt: false
+    prompt: false,
+    menu: "", // Added to track current menu name
+    // Add job-related data to cache
+    job: "N/A",
+    job_name: "N/A",
+    job_title: "N/A",
+    subjob: "N/A",
+    subjob_name: "N/A"
 };
 
 // Minimal log function
@@ -112,6 +119,7 @@ function simulateNuiMenu(menuName, choicesArray, isPrompt = false) {
     cache.menu_open = true;
     cache.menu_choices = choicesArray.map(choice => [choice]); // Format as array of arrays
     cache.prompt = isPrompt;
+    cache.menu = menuName; // Update the menu name in cache
 }
 
 // --- Main Job Selection Logic ---
@@ -152,6 +160,7 @@ function openJobSelectionMenu() {
     if (modal) {
         modal.classList.remove('hidden');
         populateJobList();
+        displayJobData(); // Display initial job data when menu opens
     } else {
         console.error("Error: jobSelectionModal element not found.");
     }
@@ -212,6 +221,15 @@ function populateJobList() {
             jobListContainer.appendChild(button);
         }
     });
+}
+
+// Function to display job data from cache
+function displayJobData() {
+    document.getElementById('displayJob').textContent = `Job: ${cache.job || 'N/A'}`;
+    document.getElementById('displayJobName').textContent = `Job Name: ${cache.job_name || 'N/A'}`;
+    document.getElementById('displayJobTitle').textContent = `Job Title: ${cache.job_title || 'N/A'}`;
+    document.getElementById('displaySubjob').textContent = `Subjob: ${cache.subjob || 'N/A'}`;
+    document.getElementById('displaySubjobName').textContent = `Subjob Name: ${cache.subjob_name || 'N/A'}`;
 }
 
 // Function to handle job selection and send NUI commands
@@ -321,7 +339,33 @@ window.closeJobSelectionMenu = closeJobSelectionMenu;
 window.selectJob = selectJob;
 window.reloadPage = reloadPage; // Make reloadPage globally accessible
 window.simulateNuiMenu = simulateNuiMenu; // Make simulateNuiMenu globally accessible for testing
+window.displayJobData = displayJobData; // Make displayJobData globally accessible
 
+// --- Event Listener for NUI Data Messages ---
+window.addEventListener("message", (event) => {
+    const evt = event.data;
+    if (!evt || !evt.data) return;
+
+    // Update cache with all incoming data
+    for (const key in evt.data) {
+        // Special handling for menu_choices if it's a JSON string
+        if (key === 'menu_choices' && typeof evt.data[key] === 'string') {
+            try {
+                cache[key] = JSON.parse(evt.data[key] ?? '[]');
+            } catch (e) {
+                console.error(`Error parsing menu_choices: ${e.message}`);
+                cache[key] = [];
+            }
+        } else {
+            cache[key] = evt.data[key];
+        }
+    }
+    // Automatically update displayed job data whenever new data arrives
+    displayJobData();
+});
+
+
+// --- DOM Content Loaded ---
 document.addEventListener('DOMContentLoaded', () => {
     const openJobMenuBtn = document.getElementById('openJobMenuBtn');
     if (openJobMenuBtn) {
