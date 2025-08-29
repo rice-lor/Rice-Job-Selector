@@ -338,6 +338,7 @@ async function selectJob(jobName) {
                 await waitForNuiState('menu_open', true, `Menu did not stay open after 'Phone / Services' again.`);
 
                 // Navigate to "Trucker's PDA"
+                console.log(`[DEBUG] Current cache.menu_choices before selecting Trucker's PDA:`, cache.menu_choices); // TEMPORARY DEBUG LOG
                 window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_TRUCKERS_PDA, mod: 0 }, '*');
                 await waitForNuiState('menu', NUI_MENU_TRUCKERS_PDA, `'Trucker's PDA' menu did not open.`);
                 await waitForNuiState('menu_open', true, `Menu did not stay open after 'Trucker's PDA'.`);
@@ -372,12 +373,13 @@ async function selectJob(jobName) {
         }
 
     } catch (e) {
-            console.error(`Error during job selection for ${jobName}:`, e);
-            log(`~r~Job Selection failed: You don't have enough Job card or the Job is not unlocked. Error: ${e.message || 'Unknown error'}`);
+        console.error(`Error during job selection for ${jobName}:`, e);
+        log(`~r~Job Selection failed: You don't have enough Job card or the Job is not unlocked. Error: ${e.message || 'Unknown error'}`);
     }
     closeJobSelectionMenu(); // Close UI after trying to apply
 
     // Send forceMenuBack after successfully applying for the job
+    log(`Sending 'forceMenuBack' command.`);
     window.parent.postMessage({ type: "forceMenuBack" }, '*');
     await sleep(500); // Delay after sending forceMenuBack
 
@@ -429,8 +431,6 @@ window.addEventListener("message", (event) => {
         } else if (key === 'menu_choice') { // Update menu_choice
             cache.menu_choice = evt.data[key];
         }
-        // No longer call displayJobData here to prevent loop.
-        // displayJobData() is called explicitly after getData command is sent.
     }
     // Explicitly call displayJobData here to update the UI after cache is updated
     displayJobData();
