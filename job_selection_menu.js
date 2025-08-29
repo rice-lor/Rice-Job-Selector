@@ -14,6 +14,9 @@ const cache = {
     prompt: false,
     menu: "", // Added to track current menu name
     menu_choice: "", // Added to track last menu choice
+    // Job-related data for Trucker subjobs
+    job: "N/A",
+    subjob: "N/A",
     last_trucker_subjob_selected: "N/A" // Default for trucker subjob
 };
 
@@ -242,8 +245,25 @@ function populateJobList() {
 
 // Function to display job data from cache (now only updates UI)
 function displayJobData() {
-    // This function is now empty as there are no elements to update.
-    // The message listener will still call it, but it will do nothing.
+    console.log("[DEBUG] Updating job data display from cache."); // Debugging log
+    const displayJobElement = document.getElementById('displayJob');
+    const displaySubjobElement = document.getElementById('displaySubjob');
+    const lastMenuChoiceTextElement = document.getElementById('lastMenuChoiceText'); // Get the new element
+
+    if (displayJobElement) {
+        displayJobElement.textContent = `Job: ${cache.job || 'N/A'}`;
+    }
+    if (displaySubjobElement) {
+        if (cache.job === "trucker") {
+            displaySubjobElement.textContent = `Subjob: ${cache.subjob || 'N/A'}`;
+            displaySubjobElement.style.display = 'block'; // Show subjob for trucker
+        } else {
+            displaySubjobElement.style.display = 'none'; // Hide subjob for other jobs
+        }
+    }
+    if (lastMenuChoiceTextElement) { // Update the new element
+        lastMenuChoiceTextElement.textContent = cache.menu_choice || 'N/A';
+    }
 }
 
 // Helper function to wait for a specific NUI cache key to match an expected value
@@ -304,7 +324,6 @@ async function selectJob(jobName) {
                 }
             }
             const finalSubjobChoiceString = targetSubjobPart ? `Trucker (${targetSubjobPart})` : "Trucker"; // The full string for NUI choice or just "Trucker"
-
 
             // --- Always select main "Trucker" job first if not already 'trucker' ---
             if (cache.job !== "trucker") {
