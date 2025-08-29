@@ -130,7 +130,7 @@ function simulateNuiMenu(menuName, choicesArray, isPrompt = false) {
 // Define NUI menu choice constants
 const NUI_MENU_PHONE_SERVICES = 'Phone / Services';
 const NUI_MENU_JOB_CENTER = 'Job Center';
-const NUI_MENU_TRUCKERS_PDA = 'Trucker\'s PDA';
+const NUI_MENU_TRUCKERS_PDA = 'Trucker&#39;s PDA'; // Corrected to match HTML entity
 const NUI_MENU_MAIN_MENU = 'Main menu'; // Constant for main menu title
 
 // Define available main jobs.
