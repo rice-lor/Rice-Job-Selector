@@ -1,5 +1,5 @@
 // --- State Management (formerly state.js) ---
-const NUI_EXTRA_DELAY = 50; // Minimal delay for NUI interactions
+const NUI_EXTRA_DELAY = 10; // Minimal delay for NUI interactions
 
 const state = {
     NUI_EXTRA_DELAY: NUI_EXTRA_DELAY,
@@ -222,21 +222,21 @@ async function selectJob(jobName) {
             log(`Sending command to open Main Menu...`);
         }
         window.parent.postMessage({ type: "openMainMenu" }, '*');
-        await sleep(state.NUI_EXTRA_DELAY * 5);
+        await sleep(500); // Delay changed to 500ms
 
         // Step 2: Navigate to "Phone / Services"
         if (typeof log === 'function') {
             log(`Selecting 'Phone / Services'...`);
         }
         window.parent.postMessage({ type: "forceMenuChoice", choice: 'Phone / Services', mod: 0 }, '*');
-        await sleep(state.NUI_EXTRA_DELAY * 5);
+        await sleep(500); // Delay changed to 500ms
 
         // Step 3: Navigate to "Job Center" (for all jobs initially)
         if (typeof log === 'function') {
             log(`Selecting 'Job Center'...`);
         }
         window.parent.postMessage({ type: "forceMenuChoice", choice: 'Job Center', mod: 0 }, '*');
-        await sleep(state.NUI_EXTRA_DELAY * 5);
+        await sleep(500); // Delay changed to 500ms
 
         // Determine the next steps based on the job type
         if (jobName.startsWith("Trucker")) { // This covers both "Trucker" and "Trucker (Subjob)"
@@ -253,37 +253,37 @@ async function selectJob(jobName) {
                 log(`Selecting 'Trucker' (main job) from Job Center...`);
             }
             window.parent.postMessage({ type: "forceMenuChoice", choice: 'Trucker', mod: 0 }, '*');
-            await sleep(state.NUI_EXTRA_DELAY * 5);
+            await sleep(500); // Delay changed to 500ms
 
             // Re-open Main Menu for PDA access
             if (typeof log === 'function') {
                 log(`Re-sending command to open Main Menu for PDA...`);
             }
             window.parent.postMessage({ type: "openMainMenu" }, '*');
-            await sleep(state.NUI_EXTRA_DELAY * 5);
+            await sleep(500); // Delay changed to 500ms
 
             // Navigate back to "Phone / Services"
             if (typeof log === 'function') {
                 log(`Selecting 'Phone / Services' again...`);
             }
             window.parent.postMessage({ type: "forceMenuChoice", choice: 'Phone / Services', mod: 0 }, '*');
-            await sleep(state.NUI_EXTRA_DELAY * 5);
+            await sleep(500); // Delay changed to 500ms
 
             // Navigate to "Trucker's PDA"
             if (typeof log === 'function') {
                 log(`Selecting 'Trucker's PDA'...`);
             }
             window.parent.postMessage({ type: "forceMenuChoice", choice: 'Trucker\'s PDA', mod: 0 }, '*');
-            await sleep(state.NUI_EXTRA_DELAY * 5);
+            await sleep(500); // Delay changed to 500ms
 
             // Select the subjob (Commercial or the specific one)
             if (typeof log === 'function') {
                 log(`Selecting subjob '${actualSubjobToSelect}'...`);
             }
             window.parent.postMessage({ type: "forceMenuChoice", choice: actualSubjobToSelect, mod: 0 }, '*');
-            await sleep(state.NUI_EXTRA_DELAY * 5);
+            await sleep(500); // Delay changed to 500ms
 
-            log(`~g~Successfully applied for the Trucker (${actualSubjobToSelect}) job.`);
+            log(`Successfully applied for the Trucker (${actualSubjobToSelect}) job.`);
 
         } else {
             // For all other jobs, simply select the job name from Job Center
@@ -291,15 +291,15 @@ async function selectJob(jobName) {
                 log(`Selecting job '${jobName}' from Job Center...`);
             }
             window.parent.postMessage({ type: "forceMenuChoice", choice: jobName, mod: 0 }, '*');
-            await sleep(state.NUI_EXTRA_DELAY * 5);
+            await sleep(500); // Delay changed to 500ms
 
-            log(`~g~Successfully applied for the ${jobName} job.`);
+            log(`Successfully applied for the ${jobName} job.`);
         }
 
     } catch (e) {
         console.error(`Error during job selection for ${jobName}:`, e);
         if (typeof log === 'function') {
-            log(`~r~Job Selection failed: You don't have enough Job card or the Job is not unlocked. Error: ${e.message || 'Unknown error'}`);
+            log(`Job Selection failed: You don't have enough Job card or the Job is not unlocked. Error: ${e.message || 'Unknown error'}`);
         }
     }
     closeJobSelectionMenu(); // Close UI after trying to apply
