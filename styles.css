@@ -5,46 +5,29 @@ body { font-family: "Inter", sans-serif; background-color: transparent; }
     border-radius: 12px; 
     padding: 24px; 
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); 
-    max-width: 800px; /* Increased max-width to accommodate job data display */
-    width: 95%; 
+    max-width: 500px; /* Reverted max-width */
+    width: 90%; 
     color: #e0e0e0; 
     position: relative; 
     display: flex; 
     flex-direction: column; 
-    min-height: 400px; 
+    min-height: auto; /* Reverted min-height */
 }
-.modal-body-content {
-    display: flex; /* Use flexbox for horizontal layout */
-    flex-direction: row;
-    gap: 20px; /* Space between job list and job data */
-    margin-bottom: 20px;
-    flex-grow: 1;
-    min-height: 300px;
-    align-items: flex-start;
-}
+/* Removed .modal-body-content styling */
+/* Removed .job-log-display styling */
+/* Removed .log-message styling */
+.modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; }
+.modal-title { font-size: 1.8rem; font-weight: 700; color: #ffffff; }
+.modal-close-btn { background: none; border: none; font-size: 1.5rem; color: #e0e0e0; cursor: pointer; transition: color 0.2s ease-in-out; }
+.modal-close-btn:hover { color: #ff5555; }
 .job-list { 
     display: grid; 
     grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); 
     gap: 15px; 
-    flex-grow: 1; 
+    margin-bottom: 20px; 
+    /* Removed flex-grow */
 }
-.job-data-display {
-    background-color: #0d0d0d;
-    border-radius: 8px;
-    padding: 15px;
-    flex-basis: 35%; /* Allocate space for job data display */
-    min-width: 200px;
-    max-height: 400px;
-    overflow-y: auto;
-    font-size: 0.9rem;
-    color: #cccccc;
-    border: 1px solid #222;
-    flex-shrink: 0;
-}
-.job-data-display p {
-    margin-bottom: 8px;
-}
-.job-button {
+.job-button { /* This class now defines the look of ALL job buttons */
     background-color: #333;
     color: #ffffff;
     padding: 12px 15px;
@@ -58,8 +41,8 @@ body { font-family: "Inter", sans-serif; background-color: transparent; }
     justify-content: center;
     align-items: center;
     text-align: center;
-    width: 100%;
-    height: 100%;
+    width: 100%; /* Ensure buttons fill their grid cell */
+    height: 100%; /* Ensure buttons fill their grid cell */
 }
 .job-button:hover { background-color: #555; transform: translateY(-2px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); }
 .job-button:active { transform: translateY(0); box-shadow: none; }
@@ -82,17 +65,19 @@ body { font-family: "Inter", sans-serif; background-color: transparent; }
 /* Styles for trucker sub-menu */
 .trucker-job-container {
     position: relative;
-    display: inline-block;
-    height: 100%;
+    display: inline-block; /* Allows sub-menu to position relative to it */
+    height: 100%; /* Ensure container fills grid cell height */
+    /* No direct button styling here. It's a container for layout. */
 }
-.trucker-main-button {
+.trucker-main-button { /* This button now takes on the full job-button styling */
+    /* It will inherit .job-button styles from the JS, so minimal specific styles here */
     width: 100%;
     height: 100%;
     display: flex;
     align-items: center;
     justify-content: center;
     text-align: center;
-    background-color: #333;
+    background-color: #333; /* Explicitly set background for the button */
     color: #ffffff;
     border-radius: 8px;
     font-size: 1rem;
@@ -113,20 +98,21 @@ body { font-family: "Inter", sans-serif; background-color: transparent; }
 
 .trucker-subjobs-menu {
     position: absolute;
-    top: 0;
-    left: calc(100% + 5px);
-    background-color: #2a2a2a;
+    top: 0; /* Align with the top of the main trucker button */
+    left: calc(100% + 5px); /* Position to the right with a small gap */
+    background-color: #2a2a2a; /* Slightly lighter background for sub-menu */
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
     padding: 10px;
     min-width: 150px;
-    display: none;
+    display: none; /* Hidden by default */
     flex-direction: column;
     gap: 8px;
-    z-index: 1010;
+    z-index: 1010; /* Ensure it's above other elements */
+    /* Removed margin-left */
 }
 .trucker-job-container:hover .trucker-subjobs-menu {
-    display: flex;
+    display: flex; /* Show on hover */
 }
 .subjob-button {
     background-color: #444;
@@ -139,7 +125,7 @@ body { font-family: "Inter", sans-serif; background-color: transparent; }
     transition: background-color 0.2s ease-in-out;
     border: 1px solid #555;
     text-align: left;
-    width: 100%;
+    width: 100%; /* Make subjob buttons fill their container */
 }
 .subjob-button:hover {
     background-color: #666;
@@ -152,14 +138,10 @@ body { font-family: "Inter", sans-serif; background-color: transparent; }
         flex-direction: column; 
     } 
     .modal-title { font-size: 1.5rem; } 
-    .modal-body-content {
-        flex-direction: column; 
-    }
-    .job-data-display {
-        width: 100%;
-        margin-bottom: 15px;
-    }
+    /* Removed .modal-body-content responsive styling */
+    /* Removed .job-log-display responsive styling */
     .job-list { grid-template-columns: 1fr; } 
+    /* Adjust sub-menu positioning for mobile if needed */
     .trucker-subjobs-menu {
         position: static; 
         margin-left: 0;
