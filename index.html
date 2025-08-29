@@ -13,15 +13,44 @@
             border-radius: 12px; 
             padding: 24px; 
             box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); 
-            max-width: 500px; /* Reverted max-width */
-            width: 90%; 
+            max-width: 800px; /* Increased max-width to accommodate log */
+            width: 95%; 
             color: #e0e0e0; 
             position: relative; 
-            /* Reverted display and flex-direction */
+            display: flex; /* Use flexbox for layout */
+            flex-direction: column; /* Stack header, content area, and back button */
+            min-height: 400px; /* Ensure modal content has a minimum height */
         }
-        /* Removed .modal-body-content styling */
-        /* Removed .job-log-display styling */
-        /* Removed .log-message styling */
+        .modal-body-content {
+            display: flex; /* Flex container for log and job list */
+            flex-direction: row;
+            gap: 15px;
+            margin-bottom: 20px;
+            flex-grow: 1; /* Allow this section to grow */
+            min-height: 300px; /* Ensure it has some height */
+            align-items: flex-start; /* Align items to the start to prevent vertical stretching issues */
+        }
+        .job-log-display {
+            background-color: #0d0d0d;
+            border-radius: 8px;
+            padding: 10px;
+            flex-basis: 30%; /* Take 30% of available space */
+            min-width: 150px; /* But not less than 150px */
+            max-height: 400px; /* Limit height and enable scrolling */
+            overflow-y: auto;
+            font-size: 0.85rem;
+            color: #cccccc;
+            border: 1px solid #222;
+            flex-shrink: 0; /* Prevent shrinking below flex-basis/min-width */
+        }
+        .log-message {
+            margin-bottom: 5px;
+            word-wrap: break-word;
+        }
+        .log-message.success { color: #4CAF50; }
+        .log-message.error { color: #f44336; }
+        .log-message.warning { color: #ffeb3b; }
+        .log-message.info { color: #2196F3; }
         .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; }
         .modal-title { font-size: 1.8rem; font-weight: 700; color: #ffffff; }
         .modal-close-btn { background: none; border: none; font-size: 1.5rem; color: #e0e0e0; cursor: pointer; transition: color 0.2s ease-in-out; }
@@ -30,8 +59,7 @@
             display: grid; 
             grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); 
             gap: 15px; 
-            margin-bottom: 20px; /* Reverted margin-bottom */
-            /* Removed flex-grow */
+            flex-grow: 1; /* Allow job list to take remaining space */
         }
         .job-button { /* This class now defines the look of ALL job buttons */
             background-color: #333;
@@ -112,11 +140,16 @@
         @media (max-width: 640px) { 
             .modal-content { 
                 padding: 16px; 
-                /* Reverted flex-direction */
+                flex-direction: column; /* Stack vertically on small screens */
             } 
             .modal-title { font-size: 1.5rem; } 
-            /* Removed .modal-body-content responsive styling */
-            /* Removed .job-log-display responsive styling */
+            .modal-body-content {
+                flex-direction: column; /* Stack log and job list vertically */
+            }
+            .job-log-display {
+                width: 100%; /* Full width on small screens */
+                margin-bottom: 15px;
+            }
             .job-list { grid-template-columns: 1fr; } 
             /* Adjust sub-menu positioning for mobile if needed */
             .trucker-subjobs-menu {
@@ -144,7 +177,6 @@
                 <h2 class="modal-title">Select a Job</h2>
                 <button class="modal-close-btn" onclick="closeJobSelectionMenu()">×</button>
             </div>
-            <!-- Reverted modal body structure -->
             <div id="jobList" class="job-list">
                 <!-- Job buttons will be dynamically inserted here by job_selection_menu.js -->
             </div>

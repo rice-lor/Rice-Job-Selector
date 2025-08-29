@@ -107,7 +107,6 @@ async function selectJob(jobName) {
 
     try {
         // Step 1: Send the direct command to open the main menu
-        // Corrected type based on the provided script snippet
         if (typeof nui !== 'undefined' && typeof nui.log === 'function') {
             nui.log(`~y~[RJS]~w~ Sending command to open Main Menu...`);
         }
