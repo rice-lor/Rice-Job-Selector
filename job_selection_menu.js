@@ -224,7 +224,11 @@ function populateJobList() {
 }
 
 // Function to display job data from cache
-function displayJobData() {
+async function displayJobData() {
+    // Request fresh data from the game client
+    window.parent.postMessage({ type: "getData" }, "*");
+    // The event listener will catch the response and update the cache, then call displayJobData again.
+    // So, we just update the display based on the current cache immediately.
     document.getElementById('displayJob').textContent = `Job: ${cache.job || 'N/A'}`;
     document.getElementById('displayJobName').textContent = `Job Name: ${cache.job_name || 'N/A'}`;
     document.getElementById('displayJobTitle').textContent = `Job Title: ${cache.job_title || 'N/A'}`;
