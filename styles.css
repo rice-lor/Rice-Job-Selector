@@ -113,7 +113,7 @@ body { font-family: "Inter", sans-serif; background-color: transparent; }
 .trucker-subjobs-menu {
     position: absolute;
     top: 0; /* Align with the top of the main trucker button */
-    left: 100%; /* Position to the right of the main trucker button */
+    left: calc(100% + 5px); /* Position to the right with a small gap */
     background-color: #2a2a2a; /* Slightly lighter background for sub-menu */
     border-radius: 8px;
     box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
@@ -123,7 +123,7 @@ body { font-family: "Inter", sans-serif; background-color: transparent; }
     flex-direction: column;
     gap: 8px;
     z-index: 1010; /* Ensure it's above other elements */
-    margin-left: 10px; /* Space between main button and sub-menu */
+    /* Removed margin-left */
 }
 .trucker-job-container:hover .trucker-subjobs-menu {
     display: flex; /* Show on hover */
