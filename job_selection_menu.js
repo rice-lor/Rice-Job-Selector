@@ -236,6 +236,7 @@ function displayJobData() {
     console.log("[DEBUG] Updating job data display from cache."); // Debugging log
     const displayJobElement = document.getElementById('displayJob');
     const displaySubjobElement = document.getElementById('displaySubjob');
+    const lastMenuChoiceTextElement = document.getElementById('lastMenuChoiceText'); // Get the new element
 
     if (displayJobElement) {
         displayJobElement.textContent = `Job: ${cache.job || 'N/A'}`;
@@ -247,6 +248,9 @@ function displayJobData() {
         } else {
             displaySubjobElement.style.display = 'none'; // Hide subjob for other jobs
         }
+    }
+    if (lastMenuChoiceTextElement) { // Update the new element
+        lastMenuChoiceTextElement.textContent = cache.menu_choice || 'N/A';
     }
 }
 
@@ -292,7 +296,7 @@ async function selectJob(jobName) {
         await waitForNuiState('menu', NUI_MENU_PHONE_SERVICES, `'Phone / Services' menu did not open.`);
         await waitForNuiState('menu_open', true, `Menu did not stay open after 'Phone / Services'.`);
 
-        // Step 3: Navigate to "Job Center"
+        // Step 3: Navigate to "Job Center" (for all jobs initially)
         window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_JOB_CENTER, mod: 0 }, '*');
         await waitForNuiState('menu', NUI_MENU_JOB_CENTER, `'Job Center' menu did not open.`);
         await waitForNuiState('menu_open', true, `Menu did not stay open after 'Job Center'.`);
@@ -445,6 +449,16 @@ const escapeListener = (e) => {
     }
 };
 window.addEventListener('keydown', escapeListener);
+
+// Add Enter key listener
+const enterKeyListener = (e) => {
+    if (e.key === "Enter") {
+        console.log("[DEBUG] Enter key pressed. Requesting menu_choice data."); // Debugging log
+        window.parent.postMessage({ type: "getNamedData", keys: ["menu_choice"] }, "*");
+    }
+};
+window.addEventListener('keydown', enterKeyListener);
+
 
 // Restrict length of data on screen, to avoid flooding the screen
 const trunc = (str, len) => {
