@@ -13,16 +13,17 @@ const cache = {
     menu_choices: [],
     prompt: false,
     menu: "", // Added to track current menu name
+    menu_choice: "", // Added to track last menu choice
     // Job-related data for Trucker subjobs
-    job: "N/A", // Only keep 'job'
-    subjob: "N/A", // Only keep 'subjob'
+    job: "N/A",
+    subjob: "N/A",
     last_trucker_subjob_selected: "N/A" // Default for trucker subjob
 };
 
 // Minimal log function
 function log(message) {
     // In a real NUI environment, this would send a notification to the game.
-    window.parent.postMessage({ type: 'notification', text: message }, '*');
+    // window.parent.postMessage({ type: 'notification', text: message }, '*');
 }
 
 // Minimal sleep function
@@ -54,6 +55,7 @@ async function submitMenu(choice, mod = 0) {
     // Simulate menu state change for testing
     cache.menu_open = false; // Menu closes after selection
     cache.menu_choices = []; // Choices clear
+    cache.menu_choice = choice; // Update last menu choice
     await sleep(state.NUI_EXTRA_DELAY);
 }
 
@@ -129,6 +131,7 @@ function simulateNuiMenu(menuName, choicesArray, isPrompt = false) {
 const NUI_MENU_PHONE_SERVICES = 'Phone / Services';
 const NUI_MENU_JOB_CENTER = 'Job Center';
 const NUI_MENU_TRUCKERS_PDA = 'Trucker\'s PDA';
+const NUI_MENU_MAIN_MENU = 'Main menu'; // Constant for main menu title
 
 // Define available main jobs.
 const MAIN_JOB_NAMES = [
@@ -247,6 +250,30 @@ function displayJobData() {
     }
 }
 
+// Helper function to wait for a specific NUI cache key to match an expected value
+async function waitForNuiState(key, expectedValue, timeoutMsg) {
+    const initialValue = cache[key];
+    if (initialValue === expectedValue) {
+        console.log(`[DEBUG] NUI state for '${key}' already '${expectedValue}'.`);
+        return true;
+    }
+
+    console.log(`[DEBUG] Waiting for NUI state '${key}' to become '${expectedValue}'...`);
+    const startTime = Date.now();
+    const timeoutDuration = 5000; // 5 seconds timeout for state changes
+
+    while (cache[key] !== expectedValue) {
+        if (Date.now() - startTime > timeoutDuration) {
+            console.warn(`[DEBUG] Timeout waiting for NUI state '${key}' to become '${expectedValue}'. Current: '${cache[key]}'.`);
+            throw new Error(timeoutMsg || `Timeout waiting for NUI state '${key}' to change.`);
+        }
+        window.parent.postMessage({ type: "getNamedData", keys: [key] }, "*"); // Request specific data
+        await sleep(state.NUI_EXTRA_DELAY * 5); // Poll every 50ms
+    }
+    console.log(`[DEBUG] NUI state '${key}' is now '${expectedValue}'.`);
+    return true;
+}
+
 // Function to handle job selection and send NUI commands
 async function selectJob(jobName) {
     console.log(`[DEBUG] Selected job: ${jobName}`); // Debugging log
@@ -259,70 +286,93 @@ async function selectJob(jobName) {
         // Step 1: Send the direct command to open the main menu
         log(`Sending command to open Main Menu...`);
         window.parent.postMessage({ type: "openMainMenu" }, '*');
-        await sleep(500); // Delay changed to 500ms
+        await waitForNuiState('menu', NUI_MENU_MAIN_MENU, `Main menu did not open.`);
 
         // Step 2: Navigate to "Phone / Services"
         log(`Selecting 'Phone / Services'...`);
         window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_PHONE_SERVICES, mod: 0 }, '*');
-        await sleep(500); // Delay changed to 500ms
-
-        // Step 3: Navigate to "Job Center" (for all jobs initially)
-        log(`Selecting 'Job Center'...`);
-        window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_JOB_CENTER, mod: 0 }, '*');
-        await sleep(500); // Delay changed to 500ms
+        await waitForNuiState('menu', NUI_MENU_PHONE_SERVICES, `'Phone / Services' menu did not open.`);
+        await waitForNuiState('menu_open', true, `Menu did not stay open after 'Phone / Services'.`); // Ensure menu is still open
 
         // Determine the next steps based on the job type
         if (jobName.startsWith("Trucker")) { // This covers both "Trucker" and "Trucker (Subjob)"
-            let actualSubjobToSelect = "";
+            let finalSubjobChoice = ""; // This will be the string sent via forceMenuChoice for the subjob
+
             if (jobName === "Trucker") {
-                actualSubjobToSelect = cache.last_trucker_subjob_selected;
-                if (!actualSubjobToSelect || !TRUCKER_SUB_JOBS.some(sub => sub.toLowerCase() === actualSubjobToSelect.toLowerCase())) {
-                    actualSubjobToSelect = "Commercial"; // Default if not found or invalid
+                // If the main "Trucker" button was clicked, use the last selected subjob or default to "Commercial"
+                let subjobPart = cache.last_trucker_subjob_selected;
+                if (!subjobPart || !TRUCKER_SUB_JOBS.some(sub => sub.toLowerCase() === subjobPart.toLowerCase())) {
+                    subjobPart = "Commercial"; // Default if not found or invalid
                 }
+                finalSubjobChoice = `Trucker (${subjobPart})`; // Construct full string for NUI choice
             } else {
-                const subjobMatch = jobName.match(/Trucker \((.*?)\)/);
-                actualSubjobToSelect = subjobMatch ? subjobMatch[1] : "Commercial"; // Fallback
+                // If a specific subjob button was clicked (e.g., "Trucker (Commercial)")
+                finalSubjobChoice = jobName; // Use the full string directly
             }
+
+            // Navigate to "Job Center"
+            log(`Selecting 'Job Center'...`);
+            window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_JOB_CENTER, mod: 0 }, '*');
+            await waitForNuiState('menu', NUI_MENU_JOB_CENTER, `'Job Center' menu did not open.`);
+            await waitForNuiState('menu_open', true, `Menu did not stay open after 'Job Center'.`);
 
             // Select main "Trucker" job from Job Center
             log(`Selecting 'Trucker' (main job) from Job Center...`);
             window.parent.postMessage({ type: "forceMenuChoice", choice: 'Trucker', mod: 0 }, '*');
-            await sleep(500); // Delay changed to 500ms
+            // After selecting trucker, the menu might close or change, so we wait for main menu again
+            await waitForNuiState('menu_open', false, `Menu did not close after selecting 'Trucker'.`); // Wait for menu to close
 
             // Re-open Main Menu for PDA access
             log(`Re-sending command to open Main Menu for PDA...`);
             window.parent.postMessage({ type: "openMainMenu" }, '*');
-            await sleep(500); // Delay changed to 500ms
+            await waitForNuiState('menu', NUI_MENU_MAIN_MENU, `Main menu did not open after re-sending command.`);
 
             // Navigate back to "Phone / Services"
             log(`Selecting 'Phone / Services' again...`);
             window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_PHONE_SERVICES, mod: 0 }, '*');
-            await sleep(500); // Delay changed to 500ms
+            await waitForNuiState('menu', NUI_MENU_PHONE_SERVICES, `'Phone / Services' menu did not open again.`);
+            await waitForNuiState('menu_open', true, `Menu did not stay open after 'Phone / Services' again.`);
 
             // Navigate to "Trucker's PDA"
             log(`Selecting 'Trucker's PDA'...`);
             window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_TRUCKERS_PDA, mod: 0 }, '*');
-            await sleep(500); // Delay changed to 500ms
+            await waitForNuiState('menu', NUI_MENU_TRUCKERS_PDA, `'Trucker's PDA' menu did not open.`);
+            await waitForNuiState('menu_open', true, `Menu did not stay open after 'Trucker's PDA'.`);
 
-            // Select the subjob (Commercial or the specific one)
-            log(`Selecting subjob '${actualSubjobToSelect}'...`);
-            window.parent.postMessage({ type: "forceMenuChoice", choice: actualSubjobToSelect, mod: 0 }, '*');
-            await sleep(500); // Delay changed to 500ms
+            // Select the subjob (e.g., "Trucker (Commercial)")
+            log(`Selecting subjob '${finalSubjobChoice}'...`);
+            window.parent.postMessage({ type: "forceMenuChoice", choice: finalSubjobChoice, mod: 0 }, '*');
+            await waitForNuiState('menu_open', false, `Menu did not close after selecting subjob.`); // Wait for menu to close
 
-            log(`~g~Successfully applied for the Trucker (${actualSubjobToSelect}) job.`);
+            // Update cache with the newly selected trucker subjob
+            cache.job = "trucker";
+            const subjobPartMatch = finalSubjobChoice.match(/Trucker \((.*?)\)/);
+            cache.subjob = subjobPartMatch ? subjobPartMatch[1] : finalSubjobChoice; // Store just the part in parentheses
+            cache.last_trucker_subjob_selected = cache.subjob; // Remember for next time
+
+            log(`~g~Successfully applied for the ${finalSubjobChoice} job.`);
 
         } else {
-            // For all other jobs, simply select the job name from Job Center
+            // For all other jobs, navigate to "Job Center" and select the job
+            log(`Selecting 'Job Center'...`);
+            window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_JOB_CENTER, mod: 0 }, '*');
+            await waitForNuiState('menu', NUI_MENU_JOB_CENTER, `'Job Center' menu did not open.`);
+            await waitForNuiState('menu_open', true, `Menu did not stay open after 'Job Center'.`);
+
             log(`Selecting job '${jobName}' from Job Center...`);
             window.parent.postMessage({ type: "forceMenuChoice", choice: jobName, mod: 0 }, '*');
-            await sleep(500); // Delay changed to 500ms
+            await waitForNuiState('menu_open', false, `Menu did not close after selecting job '${jobName}'.`);
 
+            // Update cache for non-trucker jobs
+            cache.job = jobName.toLowerCase().replace(/ /g, '_'); // Simple ID conversion
+            cache.subjob = "N/A";
+            
             log(`~g~Successfully applied for the ${jobName} job.`);
         }
 
     } catch (e) {
-        console.error(`Error during job selection for ${jobName}:`, e);
-        log(`~r~Job Selection failed: You don't have enough Job card or the Job is not unlocked. Error: ${e.message || 'Unknown error'}`);
+            console.error(`Error during job selection for ${jobName}:`, e);
+            log(`~r~Job Selection failed: You don't have enough Job card or the Job is not unlocked. Error: ${e.message || 'Unknown error'}`);
     }
     closeJobSelectionMenu(); // Close UI after trying to apply
 
@@ -335,7 +385,6 @@ async function selectJob(jobName) {
     console.log("[DEBUG] Sending getData command (after job change)."); // Debugging log
     window.parent.postMessage({ type: "getData" }, "*");
     await sleep(500); // Give time for data to be received and cache updated
-    // displayJobData() is now called by the message listener after data is received.
 }
 
 // Function to reload the page
@@ -373,10 +422,15 @@ window.addEventListener("message", (event) => {
             if (cache.job === "trucker" && evt.data[key] !== "N/A") {
                 cache.last_trucker_subjob_selected = evt.data[key];
             }
+        } else if (key === 'menu') { // Update menu name in cache
+            cache.menu = evt.data[key];
+        } else if (key === 'menu_open') { // Update menu_open state
+            cache.menu_open = evt.data[key];
+        } else if (key === 'menu_choice') { // Update menu_choice
+            cache.menu_choice = evt.data[key];
         }
-        else {
-            cache[key] = evt.data[key];
-        }
+        // No longer call displayJobData here to prevent loop.
+        // displayJobData() is called explicitly after getData command is sent.
     }
     // Explicitly call displayJobData here to update the UI after cache is updated
     displayJobData();
