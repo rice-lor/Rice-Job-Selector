@@ -22,7 +22,7 @@ const cache = {
 // Minimal log function
 function log(message) {
     // In a real NUI environment, this would send a notification to the game.
-    // window.parent.postMessage({ type: 'notification', text: message }, '*');
+    window.parent.postMessage({ type: 'notification', text: message }, '*');
 }
 
 // Minimal sleep function
@@ -138,7 +138,7 @@ const MAIN_JOB_NAMES = [
     "EMS / Paramedic",
     "Farmer",
     "Firefighter",
-    "Fisher", // Corrected from "Fisherman" to "Fisher"
+    "Fisher",
     "Garbage Collector",
     "Helicopter Pilot",
     "Leisure Pilot",
@@ -182,6 +182,7 @@ function closeJobSelectionMenu() {
 
 // Function to dynamically populate the job list in the modal
 function populateJobList() {
+    console.log("[DEBUG] Populating job list."); // Debugging log
     const jobListContainer = document.getElementById('jobList');
     if (!jobListContainer) {
         console.error("Error: jobList element not found in HTML.");
@@ -227,12 +228,9 @@ function populateJobList() {
     });
 }
 
-// Function to display job data from cache
-async function displayJobData() {
-    // Request fresh data from the game client
-    window.parent.postMessage({ type: "getData" }, "*");
-    
-    // Display job data based on current cache
+// Function to display job data from cache (now only updates UI)
+function displayJobData() {
+    console.log("[DEBUG] Updating job data display from cache."); // Debugging log
     const displayJobElement = document.getElementById('displayJob');
     const displaySubjobElement = document.getElementById('displaySubjob');
 
@@ -251,7 +249,13 @@ async function displayJobData() {
 
 // Function to handle job selection and send NUI commands
 async function selectJob(jobName) {
+    console.log(`[DEBUG] Selected job: ${jobName}`); // Debugging log
     try {
+        // --- BEFORE JOB CHANGE: Request current data ---
+        console.log("[DEBUG] Sending getData command (before job change)."); // Debugging log
+        window.parent.postMessage({ type: "getData" }, "*");
+        await sleep(500); // Give time for data to be received and cache updated
+
         // Step 1: Send the direct command to open the main menu
         log(`Sending command to open Main Menu...`);
         window.parent.postMessage({ type: "openMainMenu" }, '*');
@@ -326,6 +330,12 @@ async function selectJob(jobName) {
     log(`Sending 'forceMenuBack' command.`);
     window.parent.postMessage({ type: "forceMenuBack" }, '*');
     await sleep(500); // Delay after sending forceMenuBack
+
+    // --- AFTER JOB CHANGE: Request updated data ---
+    console.log("[DEBUG] Sending getData command (after job change)."); // Debugging log
+    window.parent.postMessage({ type: "getData" }, "*");
+    await sleep(500); // Give time for data to be received and cache updated
+    // displayJobData() is now called by the message listener after data is received.
 }
 
 // Function to reload the page
@@ -368,7 +378,7 @@ window.addEventListener("message", (event) => {
             cache[key] = evt.data[key];
         }
     }
-    // Automatically update displayed job data whenever new data arrives
+    // Explicitly call displayJobData here to update the UI after cache is updated
     displayJobData();
 });
 
@@ -392,8 +402,10 @@ const trunc = (str, len) => {
 };
 
 document.addEventListener('DOMContentLoaded', () => {
+    console.log("[DEBUG] Script loaded and DOM content parsed."); // Debugging log
     const openJobMenuBtn = document.getElementById('openJobMenuBtn');
     if (openJobMenuBtn) {
+        console.log("[DEBUG] Open Job Selection button found:", openJobMenuBtn); // Debugging log
         openJobMenuBtn.addEventListener('click', openJobSelectionMenu);
     } else {
         console.error("Error: openJobMenuBtn element not found on DOMContentLoaded.");
