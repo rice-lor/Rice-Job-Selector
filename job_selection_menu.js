@@ -14,19 +14,19 @@ const cache = {
     prompt: false,
     menu: "", // Added to track current menu name
     menu_choice: "", // Added to track last menu choice
-    // Job-related data for Trucker subjobs
-    job: "N/A",
-    subjob: "N/A",
+    // Job-related data for Trucker subjobs - simplified
+    job: "N/A", // Only keep 'job'
+    subjob: "N/A", // Only keep 'subjob'
     last_trucker_subjob_selected: "N/A" // Default for trucker subjob
 };
 
 // Minimal log function
 function log(message) {
     // In a real NUI environment, this would send a notification to the game.
-    window.parent.postMessage({ type: 'notification', text: message }, '*');
+    window.parent.postMessage({ type: 'notification', text: `~b~[Job-Select]~w~ ${message}` }, '*');
 }
 
-// Minimal sleep function
+// Minimal sleep function - still useful for short pauses where no state change is expected
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
@@ -39,10 +39,10 @@ async function sleepUntil(check, retries, timeout, errorMsg) {
             console.warn(`sleepUntil timed out: ${errorMsg}`);
             throw new Error(errorMsg);
         }
-        await sleep(timeout);
+        await sleep(10); // Use a small, fixed interval for polling within sleepUntil
         currentRetries--;
     }
-    await sleep(state.NUI_EXTRA_DELAY); // Simulate extra delay after condition met
+    await sleep(10); // Small extra delay after condition met
     return true;
 }
 
@@ -56,7 +56,7 @@ async function submitMenu(choice, mod = 0) {
     cache.menu_open = false; // Menu closes after selection
     cache.menu_choices = []; // Choices clear
     cache.menu_choice = choice; // Update last menu choice
-    await sleep(state.NUI_EXTRA_DELAY);
+    await sleep(10); // Small delay
 }
 
 // Minimal submitPrompt function
@@ -67,7 +67,7 @@ async function submitPrompt(value) {
     
     // Simulate prompt state change for testing
     cache.prompt = false; // Prompt closes after submission
-    await sleep(state.NUI_EXTRA_DELAY);
+    await sleep(10); // Small delay
 }
 
 // Minimal executeActions function - now directly integrated
@@ -100,10 +100,10 @@ async function executeActions(executionActions, autoCloseMenu = true) {
                 );
                 await submitPrompt(amount); // Simulate submitting the amount
             }
-            await sleep(state.NUI_EXTRA_DELAY);
+            await sleep(10); // Small delay
         }
 
-        await sleep(state.NUI_EXTRA_DELAY * 5); // Final delay
+        await sleep(50); // Final delay
         if (autoCloseMenu) {
             console.log("[DEBUG] Simulating NUI menu close."); // Debugging log
             // window.parent.postMessage({ type: 'forceMenuBack' }, '*'); // Actual NUI close command
@@ -245,25 +245,8 @@ function populateJobList() {
 
 // Function to display job data from cache (now only updates UI)
 function displayJobData() {
-    console.log("[DEBUG] Updating job data display from cache."); // Debugging log
-    const displayJobElement = document.getElementById('displayJob');
-    const displaySubjobElement = document.getElementById('displaySubjob');
-    const lastMenuChoiceTextElement = document.getElementById('lastMenuChoiceText'); // Get the new element
-
-    if (displayJobElement) {
-        displayJobElement.textContent = `Job: ${cache.job || 'N/A'}`;
-    }
-    if (displaySubjobElement) {
-        if (cache.job === "trucker") {
-            displaySubjobElement.textContent = `Subjob: ${cache.subjob || 'N/A'}`;
-            displaySubjobElement.style.display = 'block'; // Show subjob for trucker
-        } else {
-            displaySubjobElement.style.display = 'none'; // Hide subjob for other jobs
-        }
-    }
-    if (lastMenuChoiceTextElement) { // Update the new element
-        lastMenuChoiceTextElement.textContent = cache.menu_choice || 'N/A';
-    }
+    // This function is now empty as there are no elements to update.
+    // The message listener will still call it, but it will do nothing.
 }
 
 // Helper function to wait for a specific NUI cache key to match an expected value
@@ -453,7 +436,7 @@ window.addEventListener("message", (event) => {
 });
 
 
-// --- Add the escapeListener and trunc function ---
+// --- Add the escapeListener function ---
 const escapeListener = (e) => {
     if (e.key === "Escape") {
         // Pin the window, meaning we give control back to the game
@@ -461,25 +444,6 @@ const escapeListener = (e) => {
     }
 };
 window.addEventListener('keydown', escapeListener);
-
-// Add Enter key listener
-const enterKeyListener = (e) => {
-    if (e.key === "Enter") {
-        console.log("[DEBUG] Enter key pressed. Requesting menu_choice data."); // Debugging log
-        window.parent.postMessage({ type: "getNamedData", keys: ["menu_choice"] }, "*");
-    }
-};
-window.addEventListener('keydown', enterKeyListener);
-
-
-// Restrict length of data on screen, to avoid flooding the screen
-const trunc = (str, len) => {
-    len = len || 50;
-    if (str.length > len) {
-        return str.substring(0, len) + "...";
-    }
-    return str;
-};
 
 document.addEventListener('DOMContentLoaded', () => {
     console.log("[DEBUG] Script loaded and DOM content parsed."); // Debugging log
