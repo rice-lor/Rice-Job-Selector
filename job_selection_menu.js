@@ -1,5 +1,120 @@
-import state from './state.js';
-import * as nui from './nui.js';
+// --- State Management (formerly state.js) ---
+const NUI_EXTRA_DELAY = 10; // Minimal delay for NUI interactions
+
+const state = {
+    NUI_EXTRA_DELAY: NUI_EXTRA_DELAY,
+    // Add other minimal state properties if absolutely necessary
+};
+
+// --- NUI Interaction Functions (formerly nui.js) ---
+// Minimal cache for NUI state simulation
+const cache = {
+    menu_open: false,
+    menu_choices: [],
+    prompt: false
+};
+
+// Minimal log function
+function log(message) {
+    // In a real NUI environment, this would send a notification to the game.
+    // window.parent.postMessage({ type: 'notification', text: message }, '*');
+}
+
+// Minimal sleep function
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
+
+// Minimal sleepUntil function for NUI state checks
+async function sleepUntil(check, retries, timeout, errorMsg) {
+    let currentRetries = retries;
+    while (!check()) {
+        if (currentRetries <= 0) {
+            console.warn(`sleepUntil timed out: ${errorMsg}`);
+            throw new Error(errorMsg);
+        }
+        await sleep(timeout);
+        currentRetries--;
+        // In a real NUI environment, cache.menu_choices would be updated by game messages.
+    }
+    await sleep(state.NUI_EXTRA_DELAY); // Simulate extra delay after condition met
+    return true;
+}
+
+// Minimal submitMenu function
+async function submitMenu(choice, mod = 0) {
+    // In a real NUI environment, this sends the choice to the game.
+    // window.parent.postMessage({ type: "forceMenuChoice", choice, mod }, '*');
+    
+    // Simulate menu state change for testing
+    cache.menu_open = false; // Menu closes after selection
+    cache.menu_choices = []; // Choices clear
+    await sleep(state.NUI_EXTRA_DELAY);
+}
+
+// Minimal submitPrompt function
+async function submitPrompt(value) {
+    // In a real NUI environment, this sends the prompt value to the game.
+    // window.parent.postMessage({ type: "forceSubmitValue", value: value.toString() }, '*');
+    
+    // Simulate prompt state change for testing
+    cache.prompt = false; // Prompt closes after submission
+    await sleep(state.NUI_EXTRA_DELAY);
+}
+
+// Minimal executeActions function - now directly integrated
+async function executeActions(executionActions, autoCloseMenu = true) {
+    try {
+        for (const { actions, amount } of executionActions) {
+            for (const { action, mod } of actions) {
+                // This is where we need the cache to be updated by the game.
+                // For manual testing, you'd call simulateNuiMenu in the console.
+                await sleepUntil(
+                    () => cache.menu_open && (cache.menu_choices ?? []).findIndex(
+                        (a) => (a ?? [])[0]?.replace(/(<.+?>)|(&#.+?;)/g, '') === action
+                    ) !== -1,
+                    300, // NUI_RETRIES (from original state.js)
+                    10,  // NUI_TIMEOUT (from original state.js)
+                    `Could not find option '${action}' in menu, exiting...`
+                );
+
+                await submitMenu(action, mod); // Simulate sending the choice
+            }
+
+            if (amount > 0) {
+                await sleepUntil(
+                    () => cache.prompt === true,
+                    300, // NUI_RETRIES
+                    10,  // NUI_TIMEOUT
+                    'Could not find prompt, exiting...'
+                );
+                await submitPrompt(amount); // Simulate submitting the amount
+            }
+            await sleep(state.NUI_EXTRA_DELAY);
+        }
+
+        await sleep(state.NUI_EXTRA_DELAY * 5); // Final delay
+        if (autoCloseMenu) {
+            // window.parent.postMessage({ type: 'forceMenuBack' }, '*'); // Actual NUI close command
+        }
+    } catch (e) {
+        console.error('Error during executeActions simulation:', e);
+        return false;
+    }
+    return true;
+}
+
+// Helper function to simulate NUI menu opening for testing
+// Call this in your browser console to simulate the game opening a menu
+function simulateNuiMenu(menuName, choicesArray, isPrompt = false) {
+    // This function is for testing purposes only, so its console.log remains
+    console.log(`[SIMULATING NUI] Menu '${menuName}' opened with choices:`, choicesArray);
+    cache.menu_open = true;
+    cache.menu_choices = choicesArray.map(choice => [choice]); // Format as array of arrays
+    cache.prompt = isPrompt;
+}
+
+// --- Main Job Selection Logic ---
 
 // Define available main jobs.
 const MAIN_JOB_NAMES = [
@@ -33,7 +148,6 @@ const TRUCKER_SUB_JOBS = [
 
 // Function to open the job selection menu
 function openJobSelectionMenu() {
-    console.log("Attempting to open job selection menu."); // Debugging log
     const modal = document.getElementById('jobSelectionModal');
     if (modal) {
         modal.classList.remove('hidden');
@@ -102,75 +216,93 @@ function populateJobList() {
 
 // Function to handle job selection and send NUI commands
 async function selectJob(jobName) {
-    console.log(`Selected job: ${jobName}`);
-    closeJobSelectionMenu(); // Close the UI immediately
-
     try {
         // Step 1: Send the direct command to open the main menu
-        if (typeof nui !== 'undefined' && typeof nui.log === 'function') {
-            nui.log(`~y~[RJS]~w~ Sending command to open Main Menu...`);
+        if (typeof log === 'function') {
+            log(`Sending command to open Main Menu...`);
         }
-        window.parent.postMessage({ type: "openMainMenu" }, '*'); // Changed from sendCommand
-        await nui.sleep(state.NUI_EXTRA_DELAY * 5); // Give game time to process command
+        window.parent.postMessage({ type: "openMainMenu" }, '*');
+        await sleep(state.NUI_EXTRA_DELAY * 5);
 
-        const executionActions = [];
+        // Step 2: Navigate to "Phone / Services"
+        if (typeof log === 'function') {
+            log(`Selecting 'Phone / Services'...`);
+        }
+        window.parent.postMessage({ type: "forceMenuChoice", choice: 'Phone / Services', mod: 0 }, '*');
+        await sleep(state.NUI_EXTRA_DELAY * 5);
 
-        // Step 2: Always navigate to "Phone / Services" first
-        executionActions.push({ actions: [{ action: 'Phone / Services', mod: 0 }], amount: 0 });
+        // Step 3: Navigate to "Job Center" (for all jobs initially)
+        if (typeof log === 'function') {
+            log(`Selecting 'Job Center'...`);
+        }
+        window.parent.postMessage({ type: "forceMenuChoice", choice: 'Job Center', mod: 0 }, '*');
+        await sleep(state.NUI_EXTRA_DELAY * 5);
 
         // Determine the next steps based on the job type
-        if (jobName.startsWith("Trucker (")) {
-            const subjobMatch = jobName.match(/Trucker \((.*?)\)/);
-            const subjobName = subjobMatch ? subjobMatch[1] : jobName; // Extract "Commercial", "Illegal", etc.
-
-            // New sequence for Trucker subjobs:
-            // 1. Phone / Services -> Trucker (main job)
-            // 2. openMainMenu (direct command again)
-            // 3. Phone / Services -> Trucker's PDA -> [Subjob Name]
-            executionActions.push(
-                { actions: [{ action: 'Phone / Services', mod: 0 }], amount: 0 },
-                { actions: [{ action: 'Trucker', mod: 0 }], amount: 0 } // Select main "Trucker" job
-            );
-
-            // After selecting "Trucker", re-open main menu to access PDA
-            if (typeof nui !== 'undefined' && typeof nui.log === 'function') {
-                nui.log(`~y~[RJS]~w~ Re-sending command to open Main Menu for PDA...`);
-            }
-            window.parent.postMessage({ type: "openMainMenu" }, '*'); // Changed from sendCommand
-            await nui.sleep(state.NUI_EXTRA_DELAY * 5); // Give game time to process command
-
-            executionActions.push(
-                { actions: [{ action: 'Phone / Services', mod: 0 }], amount: 0 },
-                { actions: [{ action: 'Trucker\'s PDA', mod: 0 }], amount: 0 },
-                { actions: [{ action: subjobName, mod: 0 }], amount: 0 } // Then select the subjob
-            );
-
-        } else {
-            // For all other jobs, the path is Phone / Services -> Job Center -> [Job Name]
-            executionActions.push(
-                { actions: [{ action: 'Phone / Services', mod: 0 }], amount: 0 },
-                { actions: [{ action: 'Job Center', mod: 0 }], amount: 0 },
-                { actions: [{ action: jobName, mod: 0 }], amount: 0 }
-            );
-        }
-
-        // Execute the actions via NUI
-        if (typeof nui !== 'undefined' && typeof nui.executeActions === 'function') {
-            if (await nui.executeActions(executionActions, true)) { // 'true' means autoCloseMenu
-                nui.log(`~g~[RJS]~w~ Successfully applied for the ${jobName} job.`);
+        if (jobName.startsWith("Trucker")) { // This covers both "Trucker" and "Trucker (Subjob)"
+            let actualSubjobToSelect = "";
+            if (jobName === "Trucker") {
+                actualSubjobToSelect = "Commercial"; // Default subjob when main "Trucker" is clicked
             } else {
-                nui.log(`~r~[RJS]~w~ Job Selection failed: You don't have enough Job card or the Job is not unlocked.`);
+                const subjobMatch = jobName.match(/Trucker \((.*?)\)/);
+                actualSubjobToSelect = subjobMatch ? subjobMatch[1] : jobName;
             }
+
+            // Select main "Trucker" job from Job Center
+            if (typeof log === 'function') {
+                log(`Selecting 'Trucker' (main job) from Job Center...`);
+            }
+            window.parent.postMessage({ type: "forceMenuChoice", choice: 'Trucker', mod: 0 }, '*');
+            await sleep(state.NUI_EXTRA_DELAY * 5);
+
+            // Re-open Main Menu for PDA access
+            if (typeof log === 'function') {
+                log(`Re-sending command to open Main Menu for PDA...`);
+            }
+            window.parent.postMessage({ type: "openMainMenu" }, '*');
+            await sleep(state.NUI_EXTRA_DELAY * 5);
+
+            // Navigate back to "Phone / Services"
+            if (typeof log === 'function') {
+                log(`Selecting 'Phone / Services' again...`);
+            }
+            window.parent.postMessage({ type: "forceMenuChoice", choice: 'Phone / Services', mod: 0 }, '*');
+            await sleep(state.NUI_EXTRA_DELAY * 5);
+
+            // Navigate to "Trucker's PDA"
+            if (typeof log === 'function') {
+                log(`Selecting 'Trucker's PDA'...`);
+            }
+            window.parent.postMessage({ type: "forceMenuChoice", choice: 'Trucker\'s PDA', mod: 0 }, '*');
+            await sleep(state.NUI_EXTRA_DELAY * 5);
+
+            // Select the subjob (Commercial or the specific one)
+            if (typeof log === 'function') {
+                log(`Selecting subjob '${actualSubjobToSelect}'...`);
+            }
+            window.parent.postMessage({ type: "forceMenuChoice", choice: actualSubjobToSelect, mod: 0 }, '*');
+            await sleep(state.NUI_EXTRA_DELAY * 5);
+
+            log(`~g~Successfully applied for the Trucker (${actualSubjobToSelect}) job.`);
+
         } else {
-            console.error("NUI functions not available. Cannot execute job selection.");
-            alert(`Simulating job selection for: ${jobName}\n(NUI functions not loaded)`);
+            // For all other jobs, simply select the job name from Job Center
+            if (typeof log === 'function') {
+                log(`Selecting job '${jobName}' from Job Center...`);
+            }
+            window.parent.postMessage({ type: "forceMenuChoice", choice: jobName, mod: 0 }, '*');
+            await sleep(state.NUI_EXTRA_DELAY * 5);
+
+            log(`~g~Successfully applied for the ${jobName} job.`);
         }
+
     } catch (e) {
         console.error(`Error during job selection for ${jobName}:`, e);
-        if (typeof nui !== 'undefined' && typeof nui.log === 'function') {
-            nui.log(`~r~[RJS]~w~ Error selecting job: ${e.message || 'Unknown error'}`);
+        if (typeof log === 'function') {
+            log(`~r~Job Selection failed: You don't have enough Job card or the Job is not unlocked. Error: ${e.message || 'Unknown error'}`);
         }
     }
+    closeJobSelectionMenu(); // Close UI after trying to apply
 }
 
 // Function to reload the page
@@ -183,12 +315,11 @@ window.openJobSelectionMenu = openJobSelectionMenu;
 window.closeJobSelectionMenu = closeJobSelectionMenu;
 window.selectJob = selectJob;
 window.reloadPage = reloadPage; // Make reloadPage globally accessible
+window.simulateNuiMenu = simulateNuiMenu; // Make simulateNuiMenu globally accessible for testing
 
 document.addEventListener('DOMContentLoaded', () => {
-    console.log("Script loaded and DOM content parsed."); // Confirm script loading
     const openJobMenuBtn = document.getElementById('openJobMenuBtn');
     if (openJobMenuBtn) {
-        console.log("Open Job Selection button found:", openJobMenuBtn); // Confirm button found
         openJobMenuBtn.addEventListener('click', openJobSelectionMenu);
     } else {
         console.error("Error: openJobMenuBtn element not found on DOMContentLoaded.");
