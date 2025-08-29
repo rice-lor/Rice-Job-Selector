@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Job Selection Menu</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link rel="stylesheet" href="styles.css"> <!-- Link to external CSS file -->
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body class="text-gray-100 flex items-center justify-center min-h-screen p-4">
 
@@ -21,10 +21,15 @@
                 <h2 class="modal-title">Select a Job</h2>
                 <button class="modal-close-btn" onclick="closeJobSelectionMenu()">×</button>
             </div>
-            <div id="jobList" class="job-list">
-                <!-- Job buttons will be dynamically inserted here by job_selection_menu.js -->
+            <div class="modal-body-content">
+                <div id="jobLogDisplay" class="job-log-display">
+                    <!-- Log messages will appear here -->
+                    <div class="log-message info">Log initialized.</div>
+                </div>
+                <div id="jobList" class="job-list">
+                    <!-- Job buttons will be dynamically inserted here by job_selection_menu.js -->
+                </div>
             </div>
-            <!-- New Refresh Page Button with margin-top for separation -->
             <button class="refresh-page-button job-button mt-4" onclick="reloadPage()">Refresh Page</button>
         </div>
     </div>
