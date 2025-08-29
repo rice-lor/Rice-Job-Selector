@@ -16,6 +16,7 @@ body { font-family: "Inter", sans-serif; background-color: transparent; }
 /* Removed .modal-body-content styling */
 /* Removed .job-log-display styling */
 /* Removed .log-message styling */
+/* Removed .menu-choice-display styling */
 .modal-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; }
 .modal-title { font-size: 1.8rem; font-weight: 700; color: #ffffff; }
 .modal-close-btn { background: none; border: none; font-size: 1.5rem; color: #e0e0e0; cursor: pointer; transition: color 0.2s ease-in-out; }
@@ -140,6 +141,7 @@ body { font-family: "Inter", sans-serif; background-color: transparent; }
     .modal-title { font-size: 1.5rem; } 
     /* Removed .modal-body-content responsive styling */
     /* Removed .job-log-display responsive styling */
+    /* Removed .menu-choice-display responsive styling */
     .job-list { grid-template-columns: 1fr; } 
     /* Adjust sub-menu positioning for mobile if needed */
     .trucker-subjobs-menu {

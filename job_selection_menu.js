@@ -14,9 +14,6 @@ const cache = {
     prompt: false,
     menu: "", // Added to track current menu name
     menu_choice: "", // Added to track last menu choice
-    // Job-related data for Trucker subjobs
-    job: "N/A",
-    subjob: "N/A",
     last_trucker_subjob_selected: "N/A" // Default for trucker subjob
 };
 
@@ -130,7 +127,7 @@ function simulateNuiMenu(menuName, choicesArray, isPrompt = false) {
 // Define NUI menu choice constants
 const NUI_MENU_PHONE_SERVICES = 'Phone / Services';
 const NUI_MENU_JOB_CENTER = 'Job Center';
-const NUI_MENU_TRUCKERS_PDA = 'Trucker\'s PDA';
+// const NUI_MENU_TRUCKERS_PDA = 'Trucker\'s PDA'; // No longer used for menu navigation
 const NUI_MENU_MAIN_MENU = 'Main menu'; // Constant for main menu title
 
 // Define available main jobs.
@@ -162,6 +159,16 @@ const TRUCKER_SUB_JOBS = [
     "Petrochemical",
     "Refrigerated"
 ];
+
+// Map subjob parts to their direct command options
+const TRUCKER_SUBJOB_COMMAND_MAP = {
+    "Commercial": "commercial",
+    "Illegal": "illegal",
+    "Military": "military",
+    "Petrochemical": "petrochem",
+    // "Refrigerated": "refrigerated" // Command for refrigerated is unknown
+};
+
 
 // Function to open the job selection menu
 function openJobSelectionMenu() {
@@ -235,25 +242,8 @@ function populateJobList() {
 
 // Function to display job data from cache (now only updates UI)
 function displayJobData() {
-    console.log("[DEBUG] Updating job data display from cache."); // Debugging log
-    const displayJobElement = document.getElementById('displayJob');
-    const displaySubjobElement = document.getElementById('displaySubjob');
-    const lastMenuChoiceTextElement = document.getElementById('lastMenuChoiceText'); // Get the new element
-
-    if (displayJobElement) {
-        displayJobElement.textContent = `Job: ${cache.job || 'N/A'}`;
-    }
-    if (displaySubjobElement) {
-        if (cache.job === "trucker") {
-            displaySubjobElement.textContent = `Subjob: ${cache.subjob || 'N/A'}`;
-            displaySubjobElement.style.display = 'block'; // Show subjob for trucker
-        } else {
-            displaySubjobElement.style.display = 'none'; // Hide subjob for other jobs
-        }
-    }
-    if (lastMenuChoiceTextElement) { // Update the new element
-        lastMenuChoiceTextElement.textContent = cache.menu_choice || 'N/A';
-    }
+    // This function is now empty as there are no elements to update.
+    // The message listener will still call it, but it will do nothing.
 }
 
 // Helper function to wait for a specific NUI cache key to match an expected value
@@ -313,7 +303,7 @@ async function selectJob(jobName) {
                     targetSubjobPart = ""; // Default to empty string for N/A
                 }
             }
-            const finalSubjobChoiceString = targetSubjobPart ? `Trucker (${targetSubjobPart})` : "Trucker"; // Construct full string for NUI choice or just "Trucker"
+            const finalSubjobChoiceString = targetSubjobPart ? `Trucker (${targetSubjobPart})` : "Trucker"; // The full string for NUI choice or just "Trucker"
 
 
             // --- Always select main "Trucker" job first if not already 'trucker' ---
@@ -338,30 +328,24 @@ async function selectJob(jobName) {
             await sleep(500); // Give time for data to be received and cache updated
 
             if (cache.subjob.toLowerCase() === targetSubjobPart.toLowerCase()) {
-                console.log(`[DEBUG] Subjob is already '${targetSubjobPart}'. Skipping PDA navigation.`);
+                console.log(`[DEBUG] Subjob is already '${targetSubjobPart}'. Skipping direct command.`);
                 log(`~g~Job already set to ${finalSubjobChoiceString}.`);
             } else {
-                // PDA navigation is needed to set the specific subjob
-                console.log(`[DEBUG] Current subjob '${cache.subjob}' does not match target '${targetSubjobPart}'. Navigating PDA.`);
+                // Subjob needs to be set via direct command
+                console.log(`[DEBUG] Current subjob '${cache.subjob}' does not match target '${targetSubjobPart}'. Sending direct command.`);
 
-                // Re-open Main Menu for PDA access
-                window.parent.postMessage({ type: "openMainMenu" }, '*');
-                await waitForNuiState('menu', NUI_MENU_MAIN_MENU, `Main menu did not open after re-sending command.`);
+                // Check if command for this subjob is known
+                const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
+                if (!subjobCommandOption) {
+                    log(`~r~Error: Command for Trucker subjob '${targetSubjobPart}' is unknown.`);
+                    throw new Error(`Command for Trucker subjob '${targetSubjobPart}' is unknown.`);
+                }
+                const directSubjobCommand = `item trucker_pda ${subjobCommandOption}`;
 
-                // Navigate back to "Phone / Services"
-                window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_PHONE_SERVICES, mod: 0 }, '*');
-                await waitForNuiState('menu', NUI_MENU_PHONE_SERVICES, `'Phone / Services' menu did not open again.`);
-                await waitForNuiState('menu_open', true, `Menu did not stay open after 'Phone / Services' again.`);
-
-                // Navigate to "Trucker's PDA"
-                console.log(`[DEBUG] Current cache.menu_choices before selecting Trucker's PDA:`, cache.menu_choices); // TEMPORARY DEBUG LOG
-                window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_TRUCKERS_PDA, mod: 0 }, '*');
-                await waitForNuiState('menu', NUI_MENU_TRUCKERS_PDA, `'Trucker's PDA' menu did not open.`);
-                await waitForNuiState('menu_open', true, `Menu did not stay open after 'Trucker's PDA'.`);
-
-                // Select the subjob (e.g., "Trucker (Commercial)")
-                window.parent.postMessage({ type: "forceMenuChoice", choice: finalSubjobChoiceString, mod: 0 }, '*');
-                await waitForNuiState('menu_open', false, `Menu did not close after selecting subjob.`); // Wait for menu to close
+                // Send the direct command
+                log(`Sending direct command: '${directSubjobCommand}'...`);
+                window.parent.postMessage({ type: "sendCommand", command: directSubjobCommand }, '*');
+                await waitForNuiState('subjob', targetSubjobPart.toLowerCase(), `Subjob did not change to '${targetSubjobPart}' after command.`);
 
                 // Update cache with the newly selected trucker subjob
                 cache.job = "trucker";
