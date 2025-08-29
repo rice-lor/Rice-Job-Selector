@@ -362,7 +362,6 @@ async function selectJob(jobName) {
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption}`;
 
                 // Send the direct command
-                log(`Sending direct command: '${directSubjobCommand}'...`);
                 window.parent.postMessage({ type: "sendCommand", command: directSubjobCommand }, '*');
                 await waitForNuiState('subjob', targetSubjobPart.toLowerCase(), `Subjob did not change to '${targetSubjobPart}' after command.`);
 
