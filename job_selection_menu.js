@@ -65,10 +65,8 @@ function closeJobSelectionMenu(shouldPin = true) {
 }
 
 function reloadPage() {
-    // A "soft refresh" is more reliable in NUI environments
-    log("~y~Refreshing job list...");
-    populateJobList();
-    window.parent.postMessage({ type: 'getData' }, '*');
+    // This will perform a full page refresh, like pressing F5.
+    window.location.reload();
 }
 
 function populateJobList() {
