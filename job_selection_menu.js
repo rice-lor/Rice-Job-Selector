@@ -16,7 +16,7 @@ const cache = {
     menu_choice: "", // Added to track last menu choice
     // Job-related data for Trucker subjobs - simplified
     job: "N/A", // Only keep 'job'
-    subjob: "N/A", // Only keep 'subjob'
+    subjob: "N/A", // Corrected: Initialized 'subjob' in cache
     last_trucker_subjob_selected: "N/A" // Default for trucker subjob
 };
 
