@@ -13,20 +13,33 @@ const cache = {
 let isJobSelectionOnCooldown = false; // Cooldown flag
 
 // --- NUI Interaction Functions ---
-function sendNuiCommand(type, data = {}) {
-    if (window.parent !== window) {
-        window.parent.postMessage({ type, ...data }, '*');
-    }
-    console.log(`[NUI SENT] Type: ${type}, Data: ${JSON.stringify(data)}`);
-}
-
 function log(message) {
-    sendNuiCommand('notification', { text: `~b~[Job-Select]~w~ ${message}` });
+    window.parent.postMessage({ type: 'notification', text: `~b~[Job-Select]~w~ ${message}` }, '*');
 }
 
 function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
+
+async function sleepUntil(check, retries, timeout, errorMsg) {
+    let currentRetries = retries;
+    while (!check()) {
+        if (currentRetries <= 0) {
+            console.warn(`sleepUntil timed out: ${errorMsg}`);
+            throw new Error(errorMsg);
+        }
+        await sleep(timeout);
+        currentRetries--;
+    }
+    await sleep(10); // Small extra delay after condition met
+    return true;
+}
+
+async function waitForNuiState(key, expectedValue, errorMsg) {
+    // Wait for up to 3 seconds (300 retries * 10ms)
+    await sleepUntil(() => cache[key] === expectedValue, 300, 10, errorMsg);
+}
+
 
 // --- Job Definitions ---
 const NUI_MENU_PHONE_SERVICES = 'Phone / Services';
@@ -56,8 +69,8 @@ function openJobSelectionMenu() {
     if (modal) {
         modal.classList.remove('hidden');
         populateJobList();
-        sendNuiCommand('getNamedData', { keys: ['job'] });
-        sendNuiCommand('getNamedData', { keys: ['subjob'] });
+        window.parent.postMessage({ type: 'getNamedData', keys: ['job'] }, '*');
+        window.parent.postMessage({ type: 'getNamedData', keys: ['subjob'] }, '*');
     }
 }
 
@@ -66,7 +79,7 @@ function closeJobSelectionMenu(shouldPin = true) {
     if (modal && !modal.classList.contains('hidden')) {
         modal.classList.add('hidden');
         if (shouldPin) {
-            sendNuiCommand('pin');
+            window.parent.postMessage({ type: 'pin' }, '*');
         }
     }
 }
@@ -134,8 +147,8 @@ async function selectJob(jobName) {
     log(`Selected: ${jobName}`);
     let success = false;
     try {
-        sendNuiCommand('getNamedData', { keys: ['job'] });
-        sendNuiCommand('getNamedData', { keys: ['subjob'] });
+        window.parent.postMessage({ type: 'getNamedData', keys: ['job'] }, '*');
+        window.parent.postMessage({ type: 'getNamedData', keys: ['subjob'] }, '*');
         await sleep(200);
 
         let isTruckerSelection = jobName.startsWith("Trucker");
@@ -154,8 +167,10 @@ async function selectJob(jobName) {
             } else {
                 const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption.replace('trucker_', '')}`;
-                sendNuiCommand('sendCommand', { command: directSubjobCommand });
-                await sleep(500);
+                window.parent.postMessage({ type: 'sendCommand', { command: directSubjobCommand } }, '*');
+                await sleep(250);
+                window.parent.postMessage({ type: 'getNamedData', { keys: ['subjob'] } }, '*');
+                await waitForNuiState('subjob', subjobCommandOption, `Subjob did not change to '${targetSubjobPart}' after command.`);
                 
                 cache.last_trucker_subjob_selected = targetSubjobPart;
                 log(`~g~Subjob changed to ${targetSubjobPart}.`);
@@ -163,26 +178,39 @@ async function selectJob(jobName) {
             }
         } else {
             console.log(`[DEBUG] Navigating to change main job.`);
-            sendNuiCommand('openMainMenu');
-            await sleep(500);
+            window.parent.postMessage({ type: 'openMainMenu' }, '*');
+            await sleep(500); // Add breathing room before checking
+            window.parent.postMessage({ type: 'getNamedData', keys: ['menu_open'] }, '*');
+            await waitForNuiState('menu_open', true, 'Main menu did not open.');
 
-            sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_PHONE_SERVICES, mod: 0 });
-            await sleep(500);
+            window.parent.postMessage({ type: 'forceMenuChoice', choice: NUI_MENU_PHONE_SERVICES, mod: 0 }, '*');
+            await sleep(250);
+            window.parent.postMessage({ type: 'getNamedData', keys: ['menu_choice'] }, '*');
+            await waitForNuiState('menu_choice', NUI_MENU_PHONE_SERVICES, `'Phone / Services' menu did not open.`);
 
-            sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_JOB_CENTER, mod: 0 });
-            await sleep(1000);
+            window.parent.postMessage({ type: 'forceMenuChoice', choice: NUI_MENU_JOB_CENTER, mod: 0 }, '*');
+            await sleep(250);
+            window.parent.postMessage({ type: 'getNamedData', keys: ['menu_choice'] }, '*');
+            await waitForNuiState('menu_choice', NUI_MENU_JOB_CENTER, `'Job Center' menu did not open.`);
             
             const targetJobButtonText = isTruckerSelection ? 'Trucker' : jobName;
-            sendNuiCommand('forceMenuChoice', { choice: targetJobButtonText, mod: 0 });
-            await sleep(500);
+            window.parent.postMessage({ type: 'forceMenuChoice', choice: targetJobButtonText, mod: 0 }, '*');
+            await sleep(250);
+            window.parent.postMessage({ type: 'getNamedData', keys: ['menu_open'] }, '*');
+            await waitForNuiState('menu_open', false, `Menu did not close after selecting job '${targetJobButtonText}'.`);
             
+            await sleep(250);
+            window.parent.postMessage({ type: 'getNamedData', keys: ['job'] }, '*');
+            await waitForNuiState('job', targetJob, `Job did not change to '${targetJob}' after selection.`);
             log(`~g~Job changed to ${targetJobButtonText}.`);
 
             if (targetJob === 'trucker' && targetSubjobPart !== "N/A") {
                 const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption.replace('trucker_', '')}`;
-                sendNuiCommand('sendCommand', { command: directSubjobCommand });
-                await sleep(500);
+                window.parent.postMe ssage({ type: 'sendCommand', command: directSubjobCommand }, '*');
+                await sleep(250);
+                window.parent.postMessage({ type: 'getNamedData', keys: ['subjob'] }, '*');
+                await waitForNuiState('subjob', subjobCommandOption, `Subjob did not change to '${targetSubjobPart}' after command.`);
                 
                 cache.last_trucker_subjob_selected = targetSubjobPart;
                 log(`~g~Subjob changed to ${targetSubjobPart}.`);
@@ -192,12 +220,12 @@ async function selectJob(jobName) {
         
     } catch (e) {
         console.error(`Error during job selection for ${jobName}:`, e);
-        log(`~r~Job Selection failed: An unexpected error occurred.`);
+        log(`~r~Job Selection failed: ${e.message || 'An unexpected error occurred.'}`);
     } finally {
         closeJobSelectionMenu(false); 
-        if (success) { // Removed the check for cache.menu_open
+        if (success) {
              await sleep(500);
-             sendNuiCommand('forceMenuBack');
+             window.parent.postMessage({ type: 'forceMenuBack' }, '*');
         }
     }
 }
@@ -228,13 +256,13 @@ document.addEventListener('DOMContentLoaded', () => {
     const openBtn = document.getElementById('openJobMenuBtn');
     openBtn.addEventListener('click', openJobSelectionMenu);
     
-    sendNuiCommand('getData');
+    window.parent.postMessage({ type: 'getData' }, '*');
 });
 
 const escapeListener = (e) => {
     if (e.key === "Escape") {
         closeJobSelectionMenu(false);
-        sendNuiCommand("pin");
+        window.parent.postMessage({ type: 'pin' }, '*');
     }
 };
 window.addEventListener('keydown', escapeListener);
