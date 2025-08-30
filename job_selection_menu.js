@@ -191,7 +191,8 @@ async function selectJob(jobName) {
         } else {
             console.log(`[DEBUG] Job is not '${targetJob}'. Navigating to change main job.`);
             sendNuiCommand('openMainMenu');
-            await sleep(500); // Give menu time to start opening
+            // --- FIXED: Added a static delay to give the game time to respond ---
+            await sleep(500); 
             sendNuiCommand('getNamedData', { keys: ['menu_open'] });
             await waitForNuiState('menu_open', true, `Main menu did not open.`);
 
