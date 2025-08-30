@@ -35,36 +35,6 @@ async function sleepUntil(check, retries, timeout, errorMsg) {
     return true;
 }
 
-// --- NEW: A more precise helper function inspired by your script ---
-/**
- * Sends a forceMenuChoice command and waits for any change in the menu state.
- * This is more reliable than waiting for a specific outcome.
- * @param {string} choice - The menu choice to submit.
- * @param {string} errorMsg - The error message to throw on timeout.
- */
-async function forceMenuChoiceAndWaitForChange(choice, errorMsg) {
-    // Store the state of the menu BEFORE we send the command
-    const previousMenu = cache.menu;
-    const previousMenuOpen = cache.menu_open;
-    const previousMenuChoices = JSON.stringify(cache.menu_choices);
-
-    window.parent.postMessage({ type: 'forceMenuChoice', choice: choice, mod: 0 }, '*');
-
-    // Wait until ANY part of the menu state has changed, indicating a screen update.
-    try {
-        await sleepUntil(
-            () =>
-                previousMenu !== cache.menu ||
-                previousMenuOpen !== cache.menu_open ||
-                previousMenuChoices !== JSON.stringify(cache.menu_choices),
-            300, 10, errorMsg
-        );
-    } catch {
-        console.warn('Menu submission check timed out, continuing...');
-    }
-}
-
-
 // --- Job Definitions ---
 const NUI_MENU_PHONE_SERVICES = 'Phone / Services';
 const NUI_MENU_JOB_CENTER = 'Job Center';
@@ -165,7 +135,7 @@ async function selectJob(jobName) {
         isJobSelectionOnCooldown = false;
         document.querySelectorAll('.job-button, .subjob-button').forEach(btn => btn.disabled = false);
         log("~g~You can now select another job.");
-    }, 3000); // 3-second cooldown
+    }, 3000);
 
     console.log(`[DEBUG] Selected job: ${jobName}`);
     log(`Selected: ${jobName}`);
@@ -180,43 +150,36 @@ async function selectJob(jobName) {
         let targetSubjobPart = isTruckerSelection ? (jobName.match(/Trucker \((.*?)\)/)?.[1] || cache.last_trucker_subjob_selected || TRUCKER_SUB_JOBS[0]) : "N/A";
         
         if (cache.job === targetJob) {
-            let isSubjobCorrect = true;
-            if (targetJob === 'trucker' && targetSubjobPart !== "N/A") {
-                const targetSubjobId = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
-                isSubjobCorrect = (cache.subjob === targetSubjobId);
-            }
-            if (isSubjobCorrect) {
+            const targetSubjobId = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
+            if (cache.subjob === targetSubjobId) {
                 log(`~y~Job already set to ${jobName}.`);
-                success = true;
             } else {
-                const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
-                const directSubjobCommand = `item trucker_pda ${subjobCommandOption.replace('trucker_', '')}`;
+                const directSubjobCommand = `item trucker_pda ${targetSubjobId.replace('trucker_', '')}`;
                 window.parent.postMessage({ type: 'sendCommand', command: directSubjobCommand }, '*');
                 await sleep(250);
                 window.parent.postMessage({ type: 'getNamedData', keys: ['subjob'] }, '*');
-                await sleepUntil(() => cache.subjob === subjobCommandOption, 300, 10, `Subjob did not change to '${targetSubjobPart}' after command.`);
-                
-                cache.last_trucker_subjob_selected = targetSubjobPart;
+                await sleepUntil(() => cache.subjob === targetSubjobId, 300, 10, `Subjob did not change to '${targetSubjobPart}'.`);
                 log(`~g~Subjob changed to ${targetSubjobPart}.`);
-                success = true;
             }
+            success = true;
         } else {
             console.log(`[DEBUG] Navigating to change main job.`);
             window.parent.postMessage({ type: 'openMainMenu' }, '*');
-            await sleep(500); // Add breathing room before checking
-            window.parent.postMessage({ type: 'getNamedData', keys: ['menu_open'] }, '*');
-            await sleepUntil(() => cache.menu_open === true, 300, 10, 'Main menu did not open.');
+            await sleep(500);
 
-            // --- REVISED: Using the new, more precise function for navigation ---
-            await forceMenuChoiceAndWaitForChange(NUI_MENU_PHONE_SERVICES, `'Phone / Services' menu did not open.`);
-            await forceMenuChoiceAndWaitForChange(NUI_MENU_JOB_CENTER, `'Job Center' menu did not open.`);
+            window.parent.postMessage({ type: 'forceMenuChoice', choice: NUI_MENU_PHONE_SERVICES, mod: 0 }, '*');
+            await sleep(500);
+
+            window.parent.postMessage({ type: 'forceMenuChoice', choice: NUI_MENU_JOB_CENTER, mod: 0 }, '*');
+            await sleep(500);
             
             const targetJobButtonText = isTruckerSelection ? 'Trucker' : jobName;
-            await forceMenuChoiceAndWaitForChange(targetJobButtonText, `Could not select job '${targetJobButtonText}'.`);
+            window.parent.postMessage({ type: 'forceMenuChoice', choice: targetJobButtonText, mod: 0 }, '*');
+            await sleep(500);
             
-            await sleep(250);
+            // --- REVISED: Only checking for the final job change ---
             window.parent.postMessage({ type: 'getNamedData', keys: ['job'] }, '*');
-            await sleepUntil(() => cache.job === targetJob, 300, 10, `Job did not change to '${targetJob}' after selection.`);
+            await sleepUntil(() => cache.job === targetJob, 300, 10, `Job did not change to '${targetJob}'.`);
             log(`~g~Job changed to ${targetJobButtonText}.`);
 
             if (targetJob === 'trucker' && targetSubjobPart !== "N/A") {
@@ -225,9 +188,7 @@ async function selectJob(jobName) {
                 window.parent.postMessage({ type: 'sendCommand', command: directSubjobCommand }, '*');
                 await sleep(250);
                 window.parent.postMessage({ type: 'getNamedData', keys: ['subjob'] }, '*');
-                await sleepUntil(() => cache.subjob === subjobCommandOption, 300, 10, `Subjob did not change to '${targetSubjobPart}' after command.`);
-                
-                cache.last_trucker_subjob_selected = targetSubjobPart;
+                await sleepUntil(() => cache.subjob === subjobCommandOption, 300, 10, `Subjob did not change to '${targetSubjobPart}'.`);
                 log(`~g~Subjob changed to ${targetSubjobPart}.`);
             }
             success = true;
