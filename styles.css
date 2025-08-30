@@ -1,6 +1,5 @@
 body { 
     font-family: "Inter", sans-serif; 
-    /* The background is set to transparent in index.html via Tailwind's `bg-transparent` class */
 }
 .modal-overlay { 
     position: fixed; 
@@ -20,7 +19,7 @@ body {
     border-radius: 12px; 
     padding: 24px; 
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3); 
-    max-width: 650px; /* Adjusted width as data panel is removed */
+    max-width: 800px;
     width: 95%; 
     color: #e0e0e0; 
     position: relative; 
@@ -41,15 +40,15 @@ body {
 .modal-close-btn { background: none; border: none; font-size: 2rem; color: #888; cursor: pointer; transition: color 0.2s ease; line-height: 1; padding: 0; }
 .modal-close-btn:hover { color: #fff; }
 .modal-body-content {
-    margin-bottom: 20px;
+    display: flex;
     flex-grow: 1;
-    min-height: 300px;
+    margin-bottom: 15px;
 }
 .job-list { 
     display: grid; 
     grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); 
     gap: 15px; 
-    height: 100%;
+    width: 100%;
 }
 .job-button {
     background-color: #333;
@@ -70,9 +69,11 @@ body {
 }
 .job-button:hover { background-color: #555; transform: translateY(-2px); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2); }
 .job-button:active { transform: translateY(0); box-shadow: none; }
+
 .refresh-page-button {
     background-color: #4a4a4a;
     color: #ffffff;
+    padding: 10px 20px;
     border-radius: 8px;
     font-weight: 600;
     cursor: pointer;
@@ -80,7 +81,9 @@ body {
     border: 1px solid #555;
     width: 100%;
 }
-.refresh-page-button:hover { background-color: #666; }
+.refresh-page-button:hover { 
+    background-color: #666; 
+}
 
 /* Styles for trucker sub-menu */
 .trucker-job-container {
@@ -125,7 +128,6 @@ body {
 
 /* Responsive adjustments */
 @media (max-width: 768px) {
-    .modal-content { padding: 16px; }
     .job-list { grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); }
     .trucker-subjobs-menu {
         position: absolute;
