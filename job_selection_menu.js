@@ -195,7 +195,7 @@ async function selectJob(jobName) {
         log(`~r~Job Selection failed: An unexpected error occurred.`);
     } finally {
         closeJobSelectionMenu(false); 
-        if (success && cache.menu_open) {
+        if (success) { // Removed the check for cache.menu_open
              await sleep(500);
              sendNuiCommand('forceMenuBack');
         }
