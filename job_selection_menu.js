@@ -41,7 +41,6 @@ async function sleepUntil(check, retries = 20, timeout = 100, errorMsg = "Condit
         if (currentRetries <= 0) {
             throw new Error(errorMsg);
         }
-        // --- CHANGE: Added verbose logging to help debug timing issues ---
         if (debugKey) {
             console.log(`[DEBUG] Waiting for '${debugKey}'. Current value: '${cache[debugKey]}'. Retries left: ${currentRetries}`);
         }
@@ -52,13 +51,12 @@ async function sleepUntil(check, retries = 20, timeout = 100, errorMsg = "Condit
 }
 
 async function waitForNuiState(key, expectedValue, errorMsg, retries = 20, timeout = 100) {
-    // --- CHANGE: Pass the key name for better debugging ---
     await sleepUntil(() => cache[key] === expectedValue, retries, timeout, errorMsg, key);
 }
 
 
 // --- Job Definitions ---
-const NUI_MENU_MAIN_MENU = 'Main menu'; // Added for the check
+const NUI_MENU_MAIN_MENU = 'Main menu';
 const NUI_MENU_PHONE_SERVICES = 'Phone / Services';
 const NUI_MENU_JOB_CENTER = 'Job Center';
 const JOB_IDS = {
@@ -156,7 +154,7 @@ function populateJobList() {
 
 async function selectJob(jobName) {
     console.log(`[ACTION] Selected job: ${jobName}`);
-    let success = false; // Flag to determine if we should close the in-game menu
+    let success = false; 
     try {
         sendNuiCommand('getNamedData', { keys: ['job'] });
         sendNuiCommand('getNamedData', { keys: ['subjob'] });
@@ -171,7 +169,7 @@ async function selectJob(jobName) {
 
             if (!isTruckerSelection || cache.subjob === targetSubjobId) {
                 log(`You already have the job: ${jobName}`);
-                return; // Exits the function early, finally will still run
+                return;
             }
 
             log(`Changing subjob to ${targetSubjobPart}...`);
@@ -187,10 +185,12 @@ async function selectJob(jobName) {
             log(`Changing to ${notificationText}...`);
             
             sendNuiCommand('openMainMenu');
-            // --- CHANGE: Added a static delay to give the game time to react ---
             await sleep(500); 
-            sendNuiCommand('getNamedData', { keys: ['menu'] });
-            await waitForNuiState('menu', NUI_MENU_MAIN_MENU, 'Main menu did not open.', 60);
+            sendNuiCommand('getNamedData', { keys: ['menu_open', 'menu'] });
+
+            // --- REVISED LOGIC: Two-step check for menu opening ---
+            await waitForNuiState('menu_open', true, 'Game menu did not open.', 60);
+            await waitForNuiState('menu', NUI_MENU_MAIN_MENU, 'The open menu is not the Main Menu.', 20);
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_PHONE_SERVICES, mod: 0 });
             sendNuiCommand('getNamedData', { keys: ['menu_choice'] });
@@ -227,21 +227,18 @@ async function selectJob(jobName) {
                 log(`~g~Successfully changed subjob to ${targetSubjobPart}`);
             }
         }
-        success = true; // Mark as successful if we reach the end of the try block
+        success = true;
     } catch (e) {
         console.error(`[ERROR] Job selection failed:`, e);
         log(`~r~Job selection failed: ${e.message}`);
-        // On failure, `success` remains false, so the game menu will not be closed.
     } finally {
-        // This block runs regardless of success or failure.
         if (success) {
-            // Only close the in-game menu on success.
-            await sleep(250); // Give a moment before closing
+            await sleep(250); 
             if (cache.menu_open) {
                 sendNuiCommand('forceMenuBack');
             }
         }
-        closeJobSelectionMenu(false); // Always close our HTML job list UI.
+        closeJobSelectionMenu(false);
     }
 }
 
