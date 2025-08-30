@@ -21,8 +21,16 @@
                 <h2 class="modal-title">Select a Job</h2>
                 <button class="modal-close-btn" onclick="closeJobSelectionMenu()">×</button>
             </div>
-            <div id="jobList" class="job-list">
-                <!-- Job buttons will be dynamically inserted here by job_selection_menu.js -->
+            <div class="modal-body-content">
+                <div id="jobList" class="job-list">
+                    <!-- Job buttons will be dynamically inserted here by job_selection_menu.js -->
+                </div>
+                <div id="jobDataDisplayArea" class="job-data-display">
+                    <h3 class="text-lg font-semibold mb-2 text-white">Current Job Data:</h3>
+                    <p id="displayJob">Job: N/A</p>
+                    <p id="displaySubjob">Subjob: N/A</p>
+                    <button class="job-button mt-4 w-full" onclick="displayJobData()">Refresh Job Data</button>
+                </div>
             </div>
             <button class="refresh-page-button job-button mt-4" onclick="reloadPage()">Refresh Page</button>
         </div>
