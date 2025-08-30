@@ -245,6 +245,7 @@ function populateJobList() {
 
 // Function to display job data from cache (now only updates UI)
 function displayJobData() {
+    console.log("[DEBUG] Updating job data display from cache."); // Debugging log
     const displayJobElement = document.getElementById('displayJob');
     const displaySubjobElement = document.getElementById('displaySubjob');
 
@@ -294,107 +295,176 @@ async function selectJob(jobName) {
         window.parent.postMessage({ type: "getNamedData", keys: ['job', 'subjob'] }, "*");
         await sleep(500); // Give time for data to be received and cache updated
 
-        // Step 1: Check if this is a trucker job and if we are already a trucker.
-        if (jobName.startsWith("Trucker") && cache.job === "trucker") {
-            const subjobMatch = jobName.match(/Trucker \((.*?)\)/);
-            const targetSubjobPart = subjobMatch ? subjobMatch[1] : ""; // Fallback to empty string
-            
-            if (cache.subjob.toLowerCase() === targetSubjobPart.toLowerCase()) {
-                 console.log(`[DEBUG] Subjob is already '${targetSubjobPart}'. Skipping command.`);
-                 log(`~g~Job already set to Trucker (${targetSubjobPart}).`);
-            } else {
-                console.log(`[DEBUG] Subjob is different. Sending direct command.`);
-                const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
-                if (!subjobCommandOption) {
-                    log(`~r~Error: Command for Trucker subjob '${targetSubjobPart}' is unknown.`);
-                    throw new Error(`Command for Trucker subjob '${targetSubjobPart}' is unknown.`);
-                }
-                const directSubjobCommand = `item trucker_pda ${subjobCommandOption}`;
-                window.parent.postMessage({ type: "sendCommand", command: directSubjobCommand }, '*');
-                await waitForNuiState('subjob', targetSubjobPart.toLowerCase(), `Subjob did not change to '${targetSubjobPart}' after command.`);
-                
-                cache.job = "trucker";
-                cache.subjob = targetSubjobPart;
-                cache.last_trucker_subjob_selected = targetSubjobPart;
-                log(`~g~Successfully applied for the Trucker (${targetSubjobPart}) job.`);
-            }
-
-            // We are done with trucker subjob logic, just close the menu.
-            closeJobSelectionMenu(); 
-            window.parent.postMessage({ type: "forceMenuBack" }, '*');
-            await sleep(500);
-            window.parent.postMessage({ type: "getNamedData", keys: ['job', 'subjob'] }, "*");
-            return;
-        }
-
-        // --- If not a trucker, or not already a trucker, follow the standard path ---
-        
-        // Step 2: Open main menu
+        // Step 1: Send the direct command to open the main menu
         window.parent.postMessage({ type: "openMainMenu" }, '*');
         await waitForNuiState('menu', NUI_MENU_MAIN_MENU, `Main menu did not open.`);
 
-        // Step 3: Navigate to Phone / Services
+        // Step 2: Navigate to "Phone / Services"
         window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_PHONE_SERVICES, mod: 0 }, '*');
         await waitForNuiState('menu', NUI_MENU_PHONE_SERVICES, `'Phone / Services' menu did not open.`);
         await waitForNuiState('menu_open', true, `Menu did not stay open after 'Phone / Services'.`);
 
-        // Step 4: Navigate to Job Center
-        window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_JOB_CENTER, mod: 0 }, '*');
-        await waitForNuiState('menu', NUI_MENU_JOB_CENTER, `'Job Center' menu did not open.`);
-        await waitForNuiState('menu_open', true, `Menu did not stay open after 'Job Center'.`);
-        
-        // Step 5: Select the job
-        let targetJobName = jobName;
-        let targetSubjobPart = "N/A";
-        
-        if (jobName.startsWith("Trucker")) {
-            targetJobName = "Trucker";
-            const subjobMatch = jobName.match(/Trucker \((.*?)\)/);
-            targetSubjobPart = subjobMatch ? subjobMatch[1] : "N/A";
-        }
+        // Determine the next steps based on the job type
+        if (jobName.startsWith("Trucker")) { // This covers both "Trucker" and "Trucker (Subjob)"
+            let targetSubjobPart = ""; // The actual subjob part (e.g., "Commercial") to end up with
 
-        window.parent.postMessage({ type: "forceMenuChoice", choice: targetJobName, mod: 0 }, '*');
-        await waitForNuiState('menu_open', false, `Menu did not close after selecting job '${targetJobName}'.`);
-        
-        // Step 6: After job selection, check if it's a trucker and if a subjob needs setting
-        if (targetJobName === "Trucker" && targetSubjobPart !== "N/A") {
+            // If a specific subjob button was clicked (e.g., "Trucker (Commercial)")
+            if (jobName !== "Trucker") {
+                const subjobMatch = jobName.match(/Trucker \((.*?)\)/);
+                targetSubjobPart = subjobMatch ? subjobMatch[1] : ""; // Fallback to empty string for N/A
+            } else {
+                // If the main "Trucker" button was clicked, use the last selected subjob or keep N/A
+                targetSubjobPart = cache.last_trucker_subjob_selected;
+                if (!targetSubjobPart || !TRUCKER_SUB_JOBS.some(sub => sub.toLowerCase() === targetSubjobPart.toLowerCase())) {
+                    targetSubjobPart = ""; // Default to empty string for N/A
+                }
+            }
+            const finalSubjobChoiceString = targetSubjobPart ? `Trucker (${targetSubjobPart})` : "Trucker"; // The full string for NUI choice or just "Trucker"
+
+            // --- Always select main "Trucker" job first if not already 'trucker' ---
+            if (cache.job !== "trucker") {
+                console.log(`[DEBUG] Job is not 'trucker'. Navigating to Job Center to select 'Trucker'.`);
+                // Navigate to "Job Center"
+                window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_JOB_CENTER, mod: 0 }, '*');
+                await waitForNuiState('menu', NUI_MENU_JOB_CENTER, `'Job Center' menu did not open.`);
+                await waitForNuiState('menu_open', true, `Menu did not stay open after 'Job Center'.`);
+
+                // Select main "Trucker" job from Job Center
+                window.parent.postMessage({ type: "forceMenuChoice", choice: 'Trucker', mod: 0 }, '*');
+                await waitForNuiState('menu_open', false, `Menu did not close after selecting 'Trucker'.`); // Wait for menu to close
+                await waitForNuiState('job', 'trucker', `Job did not change to 'trucker' after selection.`); // Wait for job to register
+            } else {
+                console.log(`[DEBUG] Job is already 'trucker'. Checking subjob...`);
+            }
+
+            // --- Now that we are a trucker, check if the target subjob is already set ---
+            // We need to re-fetch data to get the *new* subjob after potentially becoming a trucker
             window.parent.postMessage({ type: "getNamedData", keys: ['subjob'] }, "*");
             await sleep(500); // Give time for data to be received and cache updated
-            
-            if (cache.subjob.toLowerCase() !== targetSubjobPart.toLowerCase()) {
-                console.log(`[DEBUG] Subjob needs to be set. Current: '${cache.subjob}', Target: '${targetSubjobPart}'.`);
 
+            if (cache.subjob.toLowerCase() === targetSubjobPart.toLowerCase()) {
+                console.log(`[DEBUG] Subjob is already '${targetSubjobPart}'. Skipping direct command.`);
+                log(`~g~Job already set to ${finalSubjobChoiceString}.`);
+            } else {
+                // Subjob needs to be set via direct command
+                console.log(`[DEBUG] Current subjob '${cache.subjob}' does not match target '${targetSubjobPart}'. Sending direct command.`);
+
+                // Check if command for this subjob is known
                 const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
                 if (!subjobCommandOption) {
                     log(`~r~Error: Command for Trucker subjob '${targetSubjobPart}' is unknown.`);
                     throw new Error(`Command for Trucker subjob '${targetSubjobPart}' is unknown.`);
                 }
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption}`;
+
+                // Send the direct command
                 window.parent.postMessage({ type: "sendCommand", command: directSubjobCommand }, '*');
                 await waitForNuiState('subjob', targetSubjobPart.toLowerCase(), `Subjob did not change to '${targetSubjobPart}' after command.`);
-                
+
+                // Update cache with the newly selected trucker subjob
                 cache.job = "trucker";
                 cache.subjob = targetSubjobPart;
-                cache.last_trucker_subjob_selected = targetSubjobPart;
-            } else {
-                console.log(`[DEBUG] Subjob is already '${targetSubjobPart}'. No action needed.`);
+                cache.last_trucker_subjob_selected = targetSubjobPart; // Remember for next time
+
+                log(`~g~Successfully applied for the ${finalSubjobChoiceString} job.`);
             }
 
-            log(`~g~Successfully applied for the Trucker (${targetSubjobPart}) job.`);
         } else {
-             cache.job = targetJobName.toLowerCase().replace(/ /g, '_');
-             cache.subjob = "N/A";
-             log(`~g~Successfully applied for the ${targetJobName} job.`);
-        }
+            // For all other jobs, navigate to "Job Center" and select the job
+            window.parent.postMessage({ type: "forceMenuChoice", choice: NUI_MENU_JOB_CENTER, mod: 0 }, '*');
+            await waitForNuiState('menu', NUI_MENU_JOB_CENTER, `'Job Center' menu did not open.`);
+            await waitForNuiState('menu_open', true, `Menu did not stay open after 'Job Center'.`);
 
+            window.parent.postMessage({ type: "forceMenuChoice", choice: jobName, mod: 0 }, '*');
+            await waitForNuiState('menu_open', false, `Menu did not close after selecting job '${jobName}'.`);
+
+            // Update cache for non-trucker jobs
+            cache.job = jobName.toLowerCase().replace(/ /g, '_'); // Simple ID conversion
+            cache.subjob = "N/A";
+            
+            log(`~g~Successfully applied for the ${jobName} job.`);
+        }
 
     } catch (e) {
         console.error(`Error during job selection for ${jobName}:`, e);
         log(`~r~Job Selection failed: You don't have enough Job card or the Job is not unlocked. Error: ${e.message || 'Unknown error'}`);
-    } finally {
-        closeJobSelectionMenu(); 
-        window.parent.postMessage({ type: "forceMenuBack" }, '*');
-        await sleep(500); 
-        window.parent.postMessage({ type: "getNamedData", keys: ['job', 'subjob'] }, "*");
     }
+    closeJobSelectionMenu(); // Close UI after trying to apply
+
+    // Send forceMenuBack after successfully applying for the job
+    window.parent.postMessage({ type: "forceMenuBack" }, '*');
+    await sleep(500); // Delay after sending forceMenuBack
+
+    // --- AFTER JOB CHANGE: Request updated data ---
+    console.log("[DEBUG] Sending getNamedData for job/subjob (after job change)."); // Debugging log
+    window.parent.postMessage({ type: "getNamedData", keys: ['job', 'subjob'] }, "*");
+    await sleep(500); // Give time for data to be received and cache updated
 }
+
+// Function to reload the page
+function reloadPage() {
+    window.location.reload();
+}
+
+// Attach functions to the window object for HTML access
+window.openJobSelectionMenu = openJobSelectionMenu;
+window.closeJobSelectionMenu = closeJobSelectionMenu;
+window.selectJob = selectJob;
+window.reloadPage = reloadPage; // Make reloadPage globally accessible
+window.simulateNuiMenu = simulateNuiMenu; // Make simulateNuiMenu globally accessible for testing
+window.displayJobData = displayJobData; // Make displayJobData globally accessible
+
+// --- Event Listener for NUI Data Messages ---
+window.addEventListener("message", (event) => {
+    const evt = event.data;
+    if (!evt || !evt.data) return;
+
+    // Update cache with all incoming data
+    for (const key in evt.data) {
+        if (key === 'menu_choices' && typeof evt.data[key] === 'string') {
+            try {
+                cache[key] = JSON.parse(evt.data[key] ?? '[]');
+            } catch (e) {
+                console.error(`Error parsing menu_choices: ${e.message}`);
+                cache[key] = [];
+            }
+        } else if (key === 'job') {
+            cache.job = evt.data[key];
+        } else if (key === 'subjob') {
+            cache.subjob = evt.data[key];
+            // Also update last_trucker_subjob_selected if it's a trucker subjob
+            if (cache.job === "trucker" && evt.data[key] !== "N/A") {
+                cache.last_trucker_subjob_selected = evt.data[key];
+            }
+        } else if (key === 'menu') { // Update menu name in cache
+            cache.menu = evt.data[key];
+        } else if (key === 'menu_open') { // Update menu_open state
+            cache.menu_open = evt.data[key];
+        } else if (key === 'menu_choice') { // Update menu_choice
+            cache.menu_choice = evt.data[key];
+        }
+    }
+    // Explicitly call displayJobData here to update the UI after cache is updated
+    displayJobData();
+});
+
+
+// --- Add the escapeListener function ---
+const escapeListener = (e) => {
+    if (e.key === "Escape") {
+        // Pin the window, meaning we give control back to the game
+        window.parent.postMessage({type: "pin"}, "*");
+    }
+};
+window.addEventListener('keydown', escapeListener);
+
+document.addEventListener('DOMContentLoaded', () => {
+    console.log("[DEBUG] Script loaded and DOM content parsed."); // Debugging log
+    const openJobMenuBtn = document.getElementById('openJobMenuBtn');
+    if (openJobMenuBtn) {
+        console.log("[DEBUG] Open Job Selection button found:", openJobMenuBtn); // Debugging log
+        openJobMenuBtn.addEventListener('click', openJobSelectionMenu);
+    } else {
+        console.error("Error: openJobMenuBtn element not found on DOMContentLoaded.");
+    }
+});
