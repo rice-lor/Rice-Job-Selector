@@ -3,10 +3,10 @@
 const cache = {
     menu_open: false,
     menu: "",
-    job: "N/A",
+    job: "NA",
     subjob: "N/A",
     last_trucker_subjob_selected: "Commercial",
-    menu_choice: "" // Added menu_choice to the initial cache for clarity
+    menu_choice: ""
 };
 
 // --- NUI Interaction ---
@@ -17,7 +17,6 @@ const cache = {
  * @param {object} data - The payload for the command.
  */
 function sendNuiCommand(type, data = {}) {
-    // This is the actual function that communicates with the game.
     if (window.parent !== window) {
         window.parent.postMessage({ type, ...data }, '*');
     }
@@ -47,6 +46,13 @@ async function sleepUntil(check, retries = 20, timeout = 100, errorMsg = "Condit
     }
     return true;
 }
+
+// *** ADDED HELPER FUNCTION ***
+// This function improves readability in the selectJob logic.
+async function waitForNuiState(key, expectedValue, errorMsg, retries = 20, timeout = 100) {
+    await sleepUntil(() => cache[key] === expectedValue, retries, timeout, errorMsg);
+}
+
 
 // --- Job Definitions ---
 const NUI_MENU_PHONE_SERVICES = 'Phone / Services';
@@ -86,7 +92,6 @@ function openJobSelectionMenu() {
     if (modal) {
         modal.classList.remove('hidden');
         populateJobList();
-        // Request fresh data every time the menu is opened.
         sendNuiCommand('getNamedData', { keys: ['job'] });
         sendNuiCommand('getNamedData', { keys: ['subjob'] });
     }
@@ -148,16 +153,14 @@ function populateJobList() {
 async function selectJob(jobName) {
     console.log(`[ACTION] Selected job: ${jobName}`);
     try {
-        // Step 1: Request fresh job data from the client to ensure our cache is up-to-date.
         sendNuiCommand('getNamedData', { keys: ['job'] });
         sendNuiCommand('getNamedData', { keys: ['subjob'] });
-        await sleep(200); // Give the client a moment to respond.
+        await sleep(200);
 
         let isTruckerSelection = jobName.startsWith("Trucker");
         let targetJob = isTruckerSelection ? "trucker" : JOB_IDS[jobName];
         let targetSubjobPart = isTruckerSelection ? (jobName.match(/Trucker \((.*?)\)/)?.[1] || cache.last_trucker_subjob_selected) : null;
         
-        // Case 1: Player already has the target job. We might only need to change the subjob.
         if (cache.job === targetJob) {
             const targetSubjobId = targetSubjobPart ? TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart] : null;
 
@@ -171,38 +174,33 @@ async function selectJob(jobName) {
             sendNuiCommand('sendCommand', { command: directSubjobCommand });
             cache.last_trucker_subjob_selected = targetSubjobPart;
 
-            await sleepUntil(() => cache.subjob === targetSubjobId, 20, 100, `You don't have a Trucker's PDA`);
+            await waitForNuiState('subjob', targetSubjobId, `You don't have a Trucker's PDA`);
             log(`~g~Successfully changed subjob to ${targetSubjobPart}`);
             
         } else {
-            // Case 2: Player has a different job. Navigate the full menu.
             const notificationText = isTruckerSelection ? `Trucker (${targetSubjobPart})` : jobName;
             log(`Changing to ${notificationText}...`);
             
             sendNuiCommand('openMainMenu');
-            // *** FIX 1: Add a static delay to allow the game to process the command. ***
             await sleep(250); 
-            // *** FIX 2: Increase the number of retries to wait longer for confirmation. ***
-            await sleepUntil(() => cache.menu_open, 40, 100, 'Main menu did not open.');
+            await waitForNuiState('menu_open', true, 'Main menu did not open.', 40);
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_PHONE_SERVICES, mod: 0 });
-            await sleepUntil(() => cache.menu === NUI_MENU_PHONE_SERVICES, 20, 100, 'Phone/Services menu did not open.');
+            await waitForNuiState('menu', NUI_MENU_PHONE_SERVICES, 'Phone/Services menu did not open.');
             await sleep(250);
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_JOB_CENTER, mod: 0 });
-            await sleepUntil(() => cache.menu === NUI_MENU_JOB_CENTER, 20, 100, 'Job Center menu did not open.');
+            await waitForNuiState('menu', NUI_MENU_JOB_CENTER, 'Job Center menu did not open.');
             
             const targetJobButtonText = isTruckerSelection ? 'Trucker' : jobName;
             sendNuiCommand('forceMenuChoice', { choice: targetJobButtonText, mod: 0 });
-            await sleepUntil(() => !cache.menu_open, 20, 100, 'Menu did not close after job selection.');
+            await waitForNuiState('menu_open', false, 'Menu did not close after job selection.');
 
-            // This is the specific check for job change success.
             try {
-                await sleepUntil(() => cache.job === targetJob, 20, 100, `You don't have enough job card or ${targetJob} not LVL100.`);
+                await waitForNuiState('job', targetJob, `You don't have enough job card or ${targetJob} not LVL100.`);
             } catch (jobChangeError) {
-                // If this specific step fails, log the custom error and exit.
                 log("~r~You don't have job card or job not reach lvl100");
-                console.error(jobChangeError); // Log the technical error for debugging.
+                console.error(jobChangeError);
                 return; 
             }
             log(`~g~Successfully changed job to ${isTruckerSelection ? 'Trucker' : jobName}`);
@@ -214,7 +212,7 @@ async function selectJob(jobName) {
                 sendNuiCommand('sendCommand', { command: directSubjobCommand });
                 cache.last_trucker_subjob_selected = targetSubjobPart;
 
-                await sleepUntil(() => cache.subjob === targetSubjobId, 20, 100, `You don't have a Trucker's PDA`);
+                await waitForNuiState('subjob', targetSubjobId, `You don't have a Trucker's PDA`);
                 log(`~g~Successfully changed subjob to ${targetSubjobPart}`);
             }
         }
@@ -250,12 +248,6 @@ window.addEventListener("message", (event) => {
 document.addEventListener('DOMContentLoaded', () => {
     const openBtn = document.getElementById('openJobMenuBtn');
     openBtn.addEventListener('click', openJobSelectionMenu);
-
-    // The following lines are commented out to ensure the button is always visible,
-    // even when running inside the game client.
-    // if (window.parent !== window) {
-    //     openBtn.style.display = 'none';
-    // }
     
     sendNuiCommand('getData');
 });
