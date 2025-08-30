@@ -26,6 +26,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
+// --- REVISED: Using the more responsive sleepUntil function ---
 async function sleepUntil(check, retries, timeout, errorMsg) {
     let currentRetries = retries;
     while (!check()) {
@@ -33,15 +34,16 @@ async function sleepUntil(check, retries, timeout, errorMsg) {
             console.warn(`sleepUntil timed out: ${errorMsg}`);
             throw new Error(errorMsg);
         }
-        await sleep(timeout);
+        await sleep(10); // Use a small, fixed interval for polling within sleepUntil
         currentRetries--;
     }
     await sleep(10); // Small extra delay after condition met
     return true;
 }
 
-async function waitForNuiState(key, expectedValue, errorMsg, retries = 200, timeout = 10) {
-    await sleepUntil(() => cache[key] === expectedValue, retries, timeout, errorMsg);
+async function waitForNuiState(key, expectedValue, errorMsg) {
+    // Using a 3 second timeout (300 retries * 10ms)
+    await sleepUntil(() => cache[key] === expectedValue, 300, 10, errorMsg);
 }
 
 // --- Job Definitions ---
@@ -189,7 +191,9 @@ async function selectJob(jobName) {
         } else {
             console.log(`[DEBUG] Job is not '${targetJob}'. Navigating to change main job.`);
             sendNuiCommand('openMainMenu');
-            await sleep(750); // Use a static delay instead of checking
+            await sleep(500); // Give menu time to start opening
+            sendNuiCommand('getNamedData', { keys: ['menu_open'] });
+            await waitForNuiState('menu_open', true, `Main menu did not open.`);
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_PHONE_SERVICES, mod: 0 });
             await sleep(250);
