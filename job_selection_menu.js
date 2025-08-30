@@ -245,8 +245,20 @@ function populateJobList() {
 
 // Function to display job data from cache (now only updates UI)
 function displayJobData() {
-    // This function is now empty as there are no elements to update.
-    // The message listener will still call it, but it will do nothing.
+    const displayJobElement = document.getElementById('displayJob');
+    const displaySubjobElement = document.getElementById('displaySubjob');
+
+    if (displayJobElement) {
+        displayJobElement.textContent = `Job: ${cache.job || 'N/A'}`;
+    }
+    if (displaySubjobElement) {
+        if (cache.job === "trucker") {
+            displaySubjobElement.textContent = `Subjob: ${cache.subjob || 'N/A'}`;
+            displaySubjobElement.style.display = 'block'; // Show subjob for trucker
+        } else {
+            displaySubjobElement.style.display = 'none'; // Hide subjob for other jobs
+        }
+    }
 }
 
 // Helper function to wait for a specific NUI cache key to match an expected value
