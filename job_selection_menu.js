@@ -10,6 +10,8 @@ const cache = {
     last_trucker_subjob_selected: ""
 };
 
+let isJobSelectionOnCooldown = false; // Cooldown flag
+
 // --- NUI Interaction Functions ---
 function sendNuiCommand(type, data = {}) {
     if (window.parent !== window) {
@@ -113,7 +115,24 @@ function populateJobList() {
 // --- Core Application Logic ---
 
 async function selectJob(jobName) {
+    // Cooldown check
+    if (isJobSelectionOnCooldown) {
+        log("~y~Please wait before selecting another job.");
+        return;
+    }
+
+    // Start cooldown
+    isJobSelectionOnCooldown = true;
+    document.querySelectorAll('.job-button, .subjob-button').forEach(btn => btn.disabled = true);
+    setTimeout(() => {
+        isJobSelectionOnCooldown = false;
+        document.querySelectorAll('.job-button, .subjob-button').forEach(btn => btn.disabled = false);
+        log("~g~You can now select another job.");
+    }, 3000); // 3-second cooldown
+
     console.log(`[DEBUG] Selected job: ${jobName}`);
+    log(`Selected: ${jobName}`);
+    let success = false;
     try {
         sendNuiCommand('getNamedData', { keys: ['job'] });
         sendNuiCommand('getNamedData', { keys: ['subjob'] });
@@ -131,6 +150,7 @@ async function selectJob(jobName) {
             }
             if (isSubjobCorrect) {
                 log(`~y~Job already set to ${jobName}.`);
+                success = true;
             } else {
                 const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption.replace('trucker_', '')}`;
@@ -139,6 +159,7 @@ async function selectJob(jobName) {
                 
                 cache.last_trucker_subjob_selected = targetSubjobPart;
                 log(`~g~Subjob changed to ${targetSubjobPart}.`);
+                success = true;
             }
         } else {
             console.log(`[DEBUG] Navigating to change main job.`);
@@ -149,7 +170,7 @@ async function selectJob(jobName) {
             await sleep(500);
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_JOB_CENTER, mod: 0 });
-            await sleep(500);
+            await sleep(1000);
             
             const targetJobButtonText = isTruckerSelection ? 'Trucker' : jobName;
             sendNuiCommand('forceMenuChoice', { choice: targetJobButtonText, mod: 0 });
@@ -166,6 +187,7 @@ async function selectJob(jobName) {
                 cache.last_trucker_subjob_selected = targetSubjobPart;
                 log(`~g~Subjob changed to ${targetSubjobPart}.`);
             }
+            success = true;
         }
         
     } catch (e) {
@@ -173,8 +195,8 @@ async function selectJob(jobName) {
         log(`~r~Job Selection failed: An unexpected error occurred.`);
     } finally {
         closeJobSelectionMenu(false); 
-        await sleep(500);
-        if (cache.menu_open) {
+        if (success && cache.menu_open) {
+             await sleep(500);
              sendNuiCommand('forceMenuBack');
         }
     }
