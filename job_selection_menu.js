@@ -189,9 +189,7 @@ async function selectJob(jobName) {
         } else {
             console.log(`[DEBUG] Job is not '${targetJob}'. Navigating to change main job.`);
             sendNuiCommand('openMainMenu');
-            await sleep(250);
-            sendNuiCommand('getNamedData', { keys: ['menu_open'] });
-            await waitForNuiState('menu_open', true, `Main menu did not open.`);
+            await sleep(750); // Use a static delay instead of checking
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_PHONE_SERVICES, mod: 0 });
             await sleep(250);
