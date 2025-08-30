@@ -35,24 +35,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-// --- REVISED: Restored the more responsive sleepUntil function from the original script ---
-async function sleepUntil(check, retries = 300, timeout = 10, errorMsg = "Condition not met in time.") {
-    let currentRetries = retries;
-    while (!check()) {
-        if (currentRetries <= 0) {
-            console.warn(`[TIMEOUT] ${errorMsg}. Last value of menu: '${cache.menu}', menu_open: '${cache.menu_open}', menu_choice: '${cache.menu_choice}'`);
-            throw new Error(errorMsg);
-        }
-        await sleep(timeout); // Use a small, fixed interval for polling
-        currentRetries--;
-    }
-    await sleep(50); // Small extra delay after condition met
-    return true;
-}
-
-
 // --- Job Definitions ---
-const NUI_MENU_MAIN_MENU = 'Main menu';
 const NUI_MENU_PHONE_SERVICES = 'Phone / Services';
 const NUI_MENU_JOB_CENTER = 'Job Center';
 const JOB_IDS = {
@@ -90,8 +73,7 @@ function openJobSelectionMenu() {
     if (modal) {
         modal.classList.remove('hidden');
         populateJobList();
-        sendNuiCommand('getNamedData', { keys: ['job'] });
-        sendNuiCommand('getNamedData', { keys: ['subjob'] });
+        sendNuiCommand('getNamedData', { keys: ['job', 'subjob'] });
     }
 }
 
@@ -150,8 +132,8 @@ function populateJobList() {
 
 async function selectJob(jobName) {
     console.log(`[ACTION] Selected job: ${jobName}`);
-    let success = false; 
     try {
+        // Get current job status before starting
         sendNuiCommand('getNamedData', { keys: ['job', 'subjob'] });
         await sleep(200);
 
@@ -163,41 +145,34 @@ async function selectJob(jobName) {
             const targetSubjobId = targetSubjobPart ? TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart] : null;
             if (!isTruckerSelection || cache.subjob === targetSubjobId) {
                 log(`You already have the job: ${jobName}`);
+                closeJobSelectionMenu(false);
                 return;
             }
             log(`Changing subjob to ${targetSubjobPart}...`);
             const directSubjobCommand = `item trucker_pda ${targetSubjobId.replace('trucker_', '')}`;
             sendNuiCommand('sendCommand', { command: directSubjobCommand });
             cache.last_trucker_subjob_selected = targetSubjobPart;
-            sendNuiCommand('getNamedData', { keys: ['subjob'] });
-            await sleepUntil(() => cache.subjob === targetSubjobId, 200, 10, `You don't have a Trucker's PDA`);
-            log(`~g~Successfully changed subjob to ${targetSubjobPart}`);
+            log(`~g~Set subjob to ${targetSubjobPart}`);
             
         } else {
             const notificationText = isTruckerSelection ? `Trucker (${targetSubjobPart})` : jobName;
             log(`Changing to ${notificationText}...`);
             
-            // --- REVISED: Simplified, more direct navigation logic ---
+            // --- REVISED: Removed all checks, using static delays instead ---
             sendNuiCommand('openMainMenu');
-            sendNuiCommand('getNamedData', { keys: ['menu_open'] });
-            await sleepUntil(() => cache.menu_open === true, 300, 10, 'Main menu did not open.');
+            await sleep(500); 
             
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_PHONE_SERVICES, mod: 0 });
-            sendNuiCommand('getNamedData', { keys: ['menu'] });
-            await sleepUntil(() => cache.menu === NUI_MENU_PHONE_SERVICES, 200, 10, 'Did not navigate to Phone/Services.');
+            await sleep(250);
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_JOB_CENTER, mod: 0 });
-            sendNuiCommand('getNamedData', { keys: ['menu'] });
-            await sleepUntil(() => cache.menu === NUI_MENU_JOB_CENTER, 200, 10, 'Did not navigate to Job Center.');
+            await sleep(250);
             
             const targetJobButtonText = isTruckerSelection ? 'Trucker' : jobName;
             sendNuiCommand('forceMenuChoice', { choice: targetJobButtonText, mod: 0 });
-            sendNuiCommand('getNamedData', { keys: ['menu_open'] });
-            await sleepUntil(() => cache.menu_open === false, 200, 10, 'Menu did not close after job selection.');
+            await sleep(500);
             
-            sendNuiCommand('getNamedData', { keys: ['job'] });
-            await sleepUntil(() => cache.job === targetJob, 200, 10, `You don't have enough job card or ${targetJob} not LVL100.`);
-            log(`~g~Successfully changed job to ${isTruckerSelection ? 'Trucker' : jobName}`);
+            log(`~g~Set job to ${isTruckerSelection ? 'Trucker' : jobName}`);
             
             if (isTruckerSelection && targetSubjobPart) {
                 await sleep(500);
@@ -205,22 +180,18 @@ async function selectJob(jobName) {
                 const directSubjobCommand = `item trucker_pda ${targetSubjobId.replace('trucker_', '')}`;
                 sendNuiCommand('sendCommand', { command: directSubjobCommand });
                 cache.last_trucker_subjob_selected = targetSubjobPart;
-                sendNuiCommand('getNamedData', { keys: ['subjob'] });
-                await sleepUntil(() => cache.subjob === targetSubjobId, 200, 10, `You don't have a Trucker's PDA`);
-                log(`~g~Successfully changed subjob to ${targetSubjobPart}`);
+                log(`~g~Set subjob to ${targetSubjobPart}`);
             }
         }
-        success = true;
+        await sleep(500);
+        // Always try to close the in-game menu on completion
+        sendNuiCommand('forceMenuBack');
     } catch (e) {
+        // This will only catch major script errors now, not timeouts.
         console.error(`[ERROR] Job selection failed:`, e);
-        log(`~r~Job selection failed: ${e.message}`);
+        log(`~r~An unexpected error occurred.`);
     } finally {
-        if (success) {
-            await sleep(250); 
-            if (cache.menu_open) {
-                sendNuiCommand('forceMenuBack');
-            }
-        }
+        // Always close our HTML job list UI.
         closeJobSelectionMenu(false);
     }
 }
