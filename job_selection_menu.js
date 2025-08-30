@@ -21,20 +21,6 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function sleepUntil(check, retries, timeout, errorMsg) {
-    let currentRetries = retries;
-    while (!check()) {
-        if (currentRetries <= 0) {
-            console.warn(`sleepUntil timed out: ${errorMsg}`);
-            throw new Error(errorMsg);
-        }
-        await sleep(timeout);
-        currentRetries--;
-    }
-    await sleep(10); // Small extra delay after condition met
-    return true;
-}
-
 // --- Job Definitions ---
 const NUI_MENU_PHONE_SERVICES = 'Phone / Services';
 const NUI_MENU_JOB_CENTER = 'Job Center';
@@ -79,7 +65,10 @@ function closeJobSelectionMenu(shouldPin = true) {
 }
 
 function reloadPage() {
-    window.location.reload();
+    // A "soft refresh" is more reliable in NUI environments
+    log("~y~Refreshing job list...");
+    populateJobList();
+    window.parent.postMessage({ type: 'getData' }, '*');
 }
 
 function populateJobList() {
@@ -156,9 +145,7 @@ async function selectJob(jobName) {
             } else {
                 const directSubjobCommand = `item trucker_pda ${targetSubjobId.replace('trucker_', '')}`;
                 window.parent.postMessage({ type: 'sendCommand', command: directSubjobCommand }, '*');
-                await sleep(250);
-                window.parent.postMessage({ type: 'getNamedData', keys: ['subjob'] }, '*');
-                await sleepUntil(() => cache.subjob === targetSubjobId, 300, 10, `Subjob did not change to '${targetSubjobPart}'.`);
+                await sleep(500);
                 log(`~g~Subjob changed to ${targetSubjobPart}.`);
             }
             success = true;
@@ -177,18 +164,13 @@ async function selectJob(jobName) {
             window.parent.postMessage({ type: 'forceMenuChoice', choice: targetJobButtonText, mod: 0 }, '*');
             await sleep(500);
             
-            // --- REVISED: Only checking for the final job change ---
-            window.parent.postMessage({ type: 'getNamedData', keys: ['job'] }, '*');
-            await sleepUntil(() => cache.job === targetJob, 300, 10, `Job did not change to '${targetJob}'.`);
             log(`~g~Job changed to ${targetJobButtonText}.`);
 
             if (targetJob === 'trucker' && targetSubjobPart !== "N/A") {
                 const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption.replace('trucker_', '')}`;
                 window.parent.postMessage({ type: 'sendCommand', command: directSubjobCommand }, '*');
-                await sleep(250);
-                window.parent.postMessage({ type: 'getNamedData', keys: ['subjob'] }, '*');
-                await sleepUntil(() => cache.subjob === subjobCommandOption, 300, 10, `Subjob did not change to '${targetSubjobPart}'.`);
+                await sleep(500);
                 log(`~g~Subjob changed to ${targetSubjobPart}.`);
             }
             success = true;
