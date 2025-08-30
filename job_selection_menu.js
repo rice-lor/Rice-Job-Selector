@@ -36,7 +36,7 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function sleepUntil(check, retries = 50, timeout = 100, errorMsg = "Condition not met in time.") {
+async function sleepUntil(check, retries = 20, timeout = 100, errorMsg = "Condition not met in time.") {
     let currentRetries = retries;
     while (!check()) {
         if (currentRetries <= 0) {
@@ -194,7 +194,7 @@ async function selectJob(jobName) {
 
             // This is the specific check for job change success.
             try {
-                await sleepUntil(() => cache.job === targetJob, 30, 100, `You don't have enough job card or ${targetJob} not LVL100.`);
+                await sleepUntil(() => cache.job === targetJob, 20, 100, `You don't have enough job card or ${targetJob} not LVL100.`);
             } catch (jobChangeError) {
                 // If this specific step fails, log the custom error and exit.
                 log("~r~You don't have job card or job not reach lvl100");
