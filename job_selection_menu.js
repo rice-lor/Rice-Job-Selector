@@ -167,9 +167,10 @@ async function selectJob(jobName) {
             } else {
                 const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption.replace('trucker_', '')}`;
-                window.parent.postMessage({ type: 'sendCommand', { command: directSubjobCommand } }, '*');
+                // --- FIXED: Corrected syntax for postMessage payload ---
+                window.parent.postMessage({ type: 'sendCommand', command: directSubjobCommand }, '*');
                 await sleep(250);
-                window.parent.postMessage({ type: 'getNamedData', { keys: ['subjob'] } }, '*');
+                window.parent.postMessage({ type: 'getNamedData', keys: ['subjob'] }, '*');
                 await waitForNuiState('subjob', subjobCommandOption, `Subjob did not change to '${targetSubjobPart}' after command.`);
                 
                 cache.last_trucker_subjob_selected = targetSubjobPart;
@@ -207,7 +208,8 @@ async function selectJob(jobName) {
             if (targetJob === 'trucker' && targetSubjobPart !== "N/A") {
                 const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption.replace('trucker_', '')}`;
-                window.parent.postMe ssage({ type: 'sendCommand', command: directSubjobCommand }, '*');
+                // --- FIXED: Corrected typo 'postMe ssage' to 'postMessage' ---
+                window.parent.postMessage({ type: 'sendCommand', command: directSubjobCommand }, '*');
                 await sleep(250);
                 window.parent.postMessage({ type: 'getNamedData', keys: ['subjob'] }, '*');
                 await waitForNuiState('subjob', subjobCommandOption, `Subjob did not change to '${targetSubjobPart}' after command.`);
