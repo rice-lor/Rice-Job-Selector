@@ -40,17 +40,28 @@ async function sleepUntil(check, retries, timeout, errorMsg) {
     return true;
 }
 
-// --- NEW: A more precise way to request and wait for data ---
+// --- NEW: A more precise helper function inspired by your script ---
 /**
- * Requests a specific piece of data from the game and waits for it to match an expected value.
- * @param {string} key - The data key to check (e.g., 'menu_open').
- * @param {*} expectedValue - The value to wait for.
+ * Sends a forceMenuChoice command and waits for any change in the menu state.
+ * This is more reliable than waiting for a specific outcome.
+ * @param {string} choice - The menu choice to submit.
  * @param {string} errorMsg - The error message to throw on timeout.
  */
-async function requestDataAndWaitForChange(key, expectedValue, errorMsg) {
-    sendNuiCommand('getNamedData', { keys: [key] });
-    // Use a 3-second timeout (300 retries * 10ms)
-    await sleepUntil(() => cache[key] === expectedValue, 300, 10, errorMsg);
+async function forceMenuChoiceAndWaitForChange(choice, errorMsg) {
+    // Store the state of the menu BEFORE we send the command
+    const previousMenu = cache.menu;
+    const previousMenuOpen = cache.menu_open;
+    const previousMenuChoices = JSON.stringify(cache.menu_choices);
+
+    sendNuiCommand('forceMenuChoice', { choice: choice, mod: 0 });
+
+    // Wait until ANY part of the menu state has changed, indicating a screen update.
+    await sleepUntil(
+        () => previousMenu !== cache.menu ||
+               previousMenuOpen !== cache.menu_open ||
+               previousMenuChoices !== JSON.stringify(cache.menu_choices),
+        300, 10, errorMsg
+    );
 }
 
 
@@ -163,7 +174,9 @@ async function selectJob(jobName) {
                 const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption.replace('trucker_', '')}`;
                 sendNuiCommand('sendCommand', { command: directSubjobCommand });
-                await requestDataAndWaitForChange('subjob', subjobCommandOption, `Subjob did not change to '${targetSubjobPart}' after command.`);
+                // We still need a specific check here as it's a direct command, not menu navigation
+                sendNuiCommand('getNamedData', { keys: ['subjob'] });
+                await sleepUntil(() => cache.subjob === subjobCommandOption, 300, 10, `Subjob did not change to '${targetSubjobPart}' after command.`);
                 
                 cache.last_trucker_subjob_selected = targetSubjobPart;
                 log(`~g~Subjob changed to ${targetSubjobPart}.`);
@@ -171,27 +184,28 @@ async function selectJob(jobName) {
         } else {
             console.log(`[DEBUG] Navigating to change main job.`);
             sendNuiCommand('openMainMenu');
-            await sleep(500); 
-            await requestDataAndWaitForChange('menu_open', true, `Main menu did not open.`);
+            await sleep(500);
+            sendNuiCommand('getNamedData', { keys: ['menu_open'] });
+            await sleepUntil(() => cache.menu_open === true, 300, 10, `Main menu did not open.`);
 
-            sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_PHONE_SERVICES, mod: 0 });
-            await requestDataAndWaitForChange('menu_choice', NUI_MENU_PHONE_SERVICES, `'Phone / Services' menu did not open.`);
-
-            sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_JOB_CENTER, mod: 0 });
-            await requestDataAndWaitForChange('menu_choice', NUI_MENU_JOB_CENTER, `'Job Center' menu did not open.`);
+            // --- REVISED: Using the new, more precise function for navigation ---
+            await forceMenuChoiceAndWaitForChange(NUI_MENU_PHONE_SERVICES, `'Phone / Services' menu did not open.`);
+            await forceMenuChoiceAndWaitForChange(NUI_MENU_JOB_CENTER, `'Job Center' menu did not open.`);
             
             const targetJobButtonText = isTruckerSelection ? 'Trucker' : jobName;
-            sendNuiCommand('forceMenuChoice', { choice: targetJobButtonText, mod: 0 });
-            await requestDataAndWaitForChange('menu_open', false, `Menu did not close after selecting job '${targetJobButtonText}'.`);
+            await forceMenuChoiceAndWaitForChange(targetJobButtonText, `Could not select job '${targetJobButtonText}'.`);
             
-            await requestDataAndWaitForChange('job', targetJob, `Job did not change to '${targetJob}' after selection.`);
+            // After selecting the job, we wait for the job data to update
+            sendNuiCommand('getNamedData', { keys: ['job'] });
+            await sleepUntil(() => cache.job === targetJob, 300, 10, `Job did not change to '${targetJob}' after selection.`);
             log(`~g~Job changed to ${targetJobButtonText}.`);
 
             if (targetJob === 'trucker' && targetSubjobPart !== "N/A") {
                 const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption.replace('trucker_', '')}`;
                 sendNuiCommand('sendCommand', { command: directSubjobCommand });
-                await requestDataAndWaitForChange('subjob', subjobCommandOption, `Subjob did not change to '${targetSubjobPart}' after command.`);
+                sendNuiCommand('getNamedData', { keys: ['subjob'] });
+                await sleepUntil(() => cache.subjob === subjobCommandOption, 300, 10, `Subjob did not change to '${targetSubjobPart}' after command.`);
                 
                 cache.last_trucker_subjob_selected = targetSubjobPart;
                 log(`~g~Subjob changed to ${targetSubjobPart}.`);
