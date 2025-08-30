@@ -154,10 +154,9 @@ function populateJobList() {
 async function selectJob(jobName) {
     console.log(`[DEBUG] Selected job: ${jobName}`);
     try {
-        // --- FIX: Request data but don't wait for it to prevent getting stuck ---
         sendNuiCommand('getNamedData', { keys: ['job'] });
         sendNuiCommand('getNamedData', { keys: ['subjob'] });
-        await sleep(200); // Give a brief moment for the data to potentially arrive
+        await sleep(200);
 
         let isTruckerSelection = jobName.startsWith("Trucker");
         let targetJob = isTruckerSelection ? "trucker" : (JOB_IDS[jobName] || jobName.toLowerCase().replace(/ /g, '_'));
@@ -180,6 +179,8 @@ async function selectJob(jobName) {
                 }
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption.replace('trucker_', '')}`;
                 sendNuiCommand('sendCommand', { command: directSubjobCommand });
+                await sleep(250);
+                sendNuiCommand('getNamedData', { keys: ['subjob'] });
                 await waitForNuiState('subjob', subjobCommandOption, `Subjob did not change to '${targetSubjobPart}' after command.`);
                 
                 cache.last_trucker_subjob_selected = targetSubjobPart;
@@ -188,18 +189,28 @@ async function selectJob(jobName) {
         } else {
             console.log(`[DEBUG] Job is not '${targetJob}'. Navigating to change main job.`);
             sendNuiCommand('openMainMenu');
+            await sleep(250);
+            sendNuiCommand('getNamedData', { keys: ['menu_open'] });
             await waitForNuiState('menu_open', true, `Main menu did not open.`);
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_PHONE_SERVICES, mod: 0 });
-            await waitForNuiState('menu', NUI_MENU_PHONE_SERVICES, `'Phone / Services' menu did not open.`);
+            await sleep(250);
+            sendNuiCommand('getNamedData', { keys: ['menu_choice'] });
+            await waitForNuiState('menu_choice', NUI_MENU_PHONE_SERVICES, `'Phone / Services' menu did not open.`);
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_JOB_CENTER, mod: 0 });
-            await waitForNuiState('menu', NUI_MENU_JOB_CENTER, `'Job Center' menu did not open.`);
+            await sleep(250);
+            sendNuiCommand('getNamedData', { keys: ['menu_choice'] });
+            await waitForNuiState('menu_choice', NUI_MENU_JOB_CENTER, `'Job Center' menu did not open.`);
             
             const targetJobButtonText = isTruckerSelection ? 'Trucker' : jobName;
             sendNuiCommand('forceMenuChoice', { choice: targetJobButtonText, mod: 0 });
+            await sleep(250);
+            sendNuiCommand('getNamedData', { keys: ['menu_open'] });
             await waitForNuiState('menu_open', false, `Menu did not close after selecting job '${targetJobButtonText}'.`);
             
+            await sleep(250);
+            sendNuiCommand('getNamedData', { keys: ['job'] });
             await waitForNuiState('job', targetJob, `Job did not change to '${targetJob}' after selection.`);
             log(`~g~Job changed to ${targetJobButtonText}.`);
 
@@ -208,6 +219,8 @@ async function selectJob(jobName) {
                 const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption.replace('trucker_', '')}`;
                 sendNuiCommand('sendCommand', { command: directSubjobCommand });
+                await sleep(250);
+                sendNuiCommand('getNamedData', { keys: ['subjob'] });
                 await waitForNuiState('subjob', subjobCommandOption, `Subjob did not change to '${targetSubjobPart}' after command.`);
                 
                 cache.last_trucker_subjob_selected = targetSubjobPart;
