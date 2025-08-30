@@ -35,11 +35,15 @@ function sleep(ms) {
     return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function sleepUntil(check, retries = 20, timeout = 100, errorMsg = "Condition not met in time.") {
+async function sleepUntil(check, retries = 20, timeout = 100, errorMsg = "Condition not met in time.", debugKey = null) {
     let currentRetries = retries;
     while (!check()) {
         if (currentRetries <= 0) {
             throw new Error(errorMsg);
+        }
+        // --- CHANGE: Added verbose logging to help debug timing issues ---
+        if (debugKey) {
+            console.log(`[DEBUG] Waiting for '${debugKey}'. Current value: '${cache[debugKey]}'. Retries left: ${currentRetries}`);
         }
         await sleep(timeout);
         currentRetries--;
@@ -48,7 +52,8 @@ async function sleepUntil(check, retries = 20, timeout = 100, errorMsg = "Condit
 }
 
 async function waitForNuiState(key, expectedValue, errorMsg, retries = 20, timeout = 100) {
-    await sleepUntil(() => cache[key] === expectedValue, retries, timeout, errorMsg);
+    // --- CHANGE: Pass the key name for better debugging ---
+    await sleepUntil(() => cache[key] === expectedValue, retries, timeout, errorMsg, key);
 }
 
 
@@ -182,6 +187,8 @@ async function selectJob(jobName) {
             log(`Changing to ${notificationText}...`);
             
             sendNuiCommand('openMainMenu');
+            // --- CHANGE: Added a static delay to give the game time to react ---
+            await sleep(500); 
             sendNuiCommand('getNamedData', { keys: ['menu'] });
             await waitForNuiState('menu', NUI_MENU_MAIN_MENU, 'Main menu did not open.', 60);
 
