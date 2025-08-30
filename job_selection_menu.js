@@ -181,12 +181,16 @@ async function selectJob(jobName) {
             
             sendNuiCommand('openMainMenu');
             await sleepUntil(() => cache.menu_open, 20, 100, 'Main menu did not open.');
+            await sleep(250); // Add a small delay for the menu UI to settle.
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_PHONE_SERVICES, mod: 0 });
-            await sleepUntil(() => cache.menu_choice === NUI_MENU_PHONE_SERVICES, 20, 100, 'Phone/Services choice not confirmed.');
+            // *** FIX: Check the menu TITLE, not the last choice. ***
+            await sleepUntil(() => cache.menu === NUI_MENU_PHONE_SERVICES, 20, 100, 'Phone/Services menu did not open.');
+            await sleep(250); // Add a small delay for the menu UI to settle.
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_JOB_CENTER, mod: 0 });
-            await sleepUntil(() => cache.menu_choice === NUI_MENU_JOB_CENTER, 20, 100, 'Job Center choice not confirmed.');
+            // *** FIX: Check the menu TITLE, not the last choice. ***
+            await sleepUntil(() => cache.menu === NUI_MENU_JOB_CENTER, 20, 100, 'Job Center menu did not open.');
             
             const targetJobButtonText = isTruckerSelection ? 'Trucker' : jobName;
             sendNuiCommand('forceMenuChoice', { choice: targetJobButtonText, mod: 0 });
@@ -199,8 +203,6 @@ async function selectJob(jobName) {
                 // If this specific step fails, log the custom error and exit.
                 log("~r~You don't have job card or job not reach lvl100");
                 console.error(jobChangeError); // Log the technical error for debugging.
-                // We return here to prevent the code from proceeding to the generic catch block.
-                // The 'finally' block will still execute to close the menu.
                 return; 
             }
             log(`~g~Successfully changed job to ${isTruckerSelection ? 'Trucker' : jobName}`);
