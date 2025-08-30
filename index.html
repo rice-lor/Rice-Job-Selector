@@ -4,36 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Job Selection Menu</title>
+    <!-- Tailwind CSS via CDN -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Link to your local CSS file -->
+    <link rel="stylesheet" href="styles.css">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
-    <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-transparent text-gray-100 flex items-center justify-center min-h-screen p-4">
-
-    <!-- Button to open the Job Selection Menu (for testing outside NUI) -->
-    <button id="openJobMenuBtn" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg transition duration-200 ease-in-out transform hover:-translate-y-1 fixed bottom-4 right-4 z-50">
+<body class="bg-transparent text-gray-100 antialiased" style="font-family: 'Inter', sans-serif;">
+    <!-- This button is for testing in a browser and will be visible in-game -->
+    <button id="openJobMenuBtn" class="fixed bottom-5 right-5 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-lg shadow-lg z-50 transition-transform transform hover:scale-105">
         Open Job Selection
     </button>
 
-    <!-- Job Selection Modal -->
-    <div id="jobSelectionModal" class="modal-overlay hidden">
-        <div class="modal-content">
-            <div class="modal-header">
-                <h2 class="modal-title">Select a Job</h2>
-                <button class="modal-close-btn" onclick="closeJobSelectionMenu()">×</button>
+    <!-- The main modal window for the job list -->
+    <div id="jobSelectionModal" class="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 hidden">
+        <div class="modal-content bg-gray-800 p-6 rounded-2xl shadow-xl w-full max-w-4xl border border-gray-700 flex flex-col" style="min-height: 500px;">
+            <div class="modal-header flex justify-between items-center pb-4 mb-4 border-b border-gray-600">
+                <h2 class="text-2xl font-bold text-white">Select a Job</h2>
+                <button class="close-btn text-gray-400 hover:text-white text-3xl font-bold leading-none" onclick="closeJobSelectionMenu(true)">&times;</button>
             </div>
-            <div class="modal-body-content">
-                <div id="jobList" class="job-list">
-                    <!-- Job buttons will be dynamically inserted here -->
-                </div>
+            <div id="jobList" class="job-list-container flex-grow">
+                <!-- Job buttons will be inserted here by the JavaScript -->
             </div>
-            <button class="refresh-page-button" onclick="reloadPage()">Refresh Page</button>
+            <button class="refresh-button mt-6 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors">
+                Refresh Page
+            </button>
         </div>
     </div>
-    
-    <script type="module" src="job_selection_menu.js"></script>
+
+    <!-- Link to your JavaScript file -->
+    <script src="job_selection_menu.js"></script>
 </body>
 </html>
 
