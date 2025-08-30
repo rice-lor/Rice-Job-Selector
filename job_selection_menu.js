@@ -208,7 +208,7 @@ async function selectJob(jobName) {
             if (targetJob === 'trucker' && targetSubjobPart !== "N/A") {
                 const subjobCommandOption = TRUCKER_SUBJOB_COMMAND_MAP[targetSubjobPart];
                 const directSubjobCommand = `item trucker_pda ${subjobCommandOption.replace('trucker_', '')}`;
-                // --- FIXED: Corrected typo 'postMe ssage' to 'postMessage' ---
+                // --- FIXED: Corrected syntax ---
                 window.parent.postMessage({ type: 'sendCommand', command: directSubjobCommand }, '*');
                 await sleep(250);
                 window.parent.postMessage({ type: 'getNamedData', keys: ['subjob'] }, '*');
