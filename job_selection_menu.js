@@ -180,16 +180,16 @@ async function selectJob(jobName) {
             log(`Changing to ${notificationText}...`);
             
             sendNuiCommand('openMainMenu');
-            await sleepUntil(() => cache.menu_open, 20, 100, 'Main menu did not open.');
-            await sleep(250); // Add a small delay for the menu UI to settle.
+            // *** FIX 1: Add a static delay to allow the game to process the command. ***
+            await sleep(250); 
+            // *** FIX 2: Increase the number of retries to wait longer for confirmation. ***
+            await sleepUntil(() => cache.menu_open, 40, 100, 'Main menu did not open.');
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_PHONE_SERVICES, mod: 0 });
-            // *** FIX: Check the menu TITLE, not the last choice. ***
             await sleepUntil(() => cache.menu === NUI_MENU_PHONE_SERVICES, 20, 100, 'Phone/Services menu did not open.');
-            await sleep(250); // Add a small delay for the menu UI to settle.
+            await sleep(250);
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_JOB_CENTER, mod: 0 });
-            // *** FIX: Check the menu TITLE, not the last choice. ***
             await sleepUntil(() => cache.menu === NUI_MENU_JOB_CENTER, 20, 100, 'Job Center menu did not open.');
             
             const targetJobButtonText = isTruckerSelection ? 'Trucker' : jobName;
