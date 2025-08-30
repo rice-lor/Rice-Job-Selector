@@ -193,8 +193,6 @@ async function selectJob(jobName) {
             sendNuiCommand('openMainMenu');
             // --- FIXED: Added a static delay to give the game time to respond ---
             await sleep(500); 
-            sendNuiCommand('getNamedData', { keys: ['menu_open'] });
-            await waitForNuiState('menu_open', true, `Main menu did not open.`);
 
             sendNuiCommand('forceMenuChoice', { choice: NUI_MENU_PHONE_SERVICES, mod: 0 });
             await sleep(250);
