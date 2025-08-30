@@ -93,7 +93,8 @@ function openJobSelectionMenu() {
     if (modal) {
         modal.classList.remove('hidden');
         populateJobList();
-        sendNuiCommand('getNamedData', { keys: ['job', 'subjob'] });
+        sendNuiCommand('getNamedData', { keys: ['job'] });
+        sendNuiCommand('getNamedData', { keys: ['subjob'] });
     }
 }
 
@@ -154,7 +155,8 @@ async function selectJob(jobName) {
     console.log(`[DEBUG] Selected job: ${jobName}`);
     try {
         // --- FIX: Request data but don't wait for it to prevent getting stuck ---
-        sendNuiCommand('getNamedData', { keys: ['job', 'subjob'] });
+        sendNuiCommand('getNamedData', { keys: ['job'] });
+        sendNuiCommand('getNamedData', { keys: ['subjob'] });
         await sleep(200); // Give a brief moment for the data to potentially arrive
 
         let isTruckerSelection = jobName.startsWith("Trucker");
@@ -223,7 +225,8 @@ async function selectJob(jobName) {
              sendNuiCommand('forceMenuBack');
         }
         await sleep(100); 
-        sendNuiCommand('getNamedData', { keys: ['job', 'subjob'] });
+        sendNuiCommand('getNamedData', { keys: ['job'] });
+        sendNuiCommand('getNamedData', { keys: ['subjob'] });
     }
 }
 
