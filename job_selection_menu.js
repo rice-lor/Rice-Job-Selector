@@ -45,7 +45,6 @@ async function waitForNuiState(key, expectedValue, errorMsg, retries = 200, time
 }
 
 // --- Job Definitions ---
-const NUI_MENU_MAIN_MENU = 'Main menu';
 const NUI_MENU_PHONE_SERVICES = 'Phone / Services';
 const NUI_MENU_JOB_CENTER = 'Job Center';
 
@@ -154,10 +153,9 @@ function populateJobList() {
 async function selectJob(jobName) {
     console.log(`[DEBUG] Selected job: ${jobName}`);
     try {
-        sendNuiCommand('getNamedData', { keys: ['job'] });
-        await sleepUntil(() => cache.job !== "N/A", 100, 50, "Failed to get current job.");
-        sendNuiCommand('getNamedData', { keys: ['subjob'] });
-        await sleepUntil(() => cache.subjob !== "N/A", 100, 50, "Failed to get current subjob.");
+        // --- FIX: Request data but don't wait for it to prevent getting stuck ---
+        sendNuiCommand('getNamedData', { keys: ['job', 'subjob'] });
+        await sleep(200); // Give a brief moment for the data to potentially arrive
 
         let isTruckerSelection = jobName.startsWith("Trucker");
         let targetJob = isTruckerSelection ? "trucker" : (JOB_IDS[jobName] || jobName.toLowerCase().replace(/ /g, '_'));
