@@ -39,11 +39,21 @@ const TRUCKER_SUB_JOBS = [ "Commercial", "Illegal", "Military", "Petrochemical",
 
 const TRUCKER_SUBJOB_COMMAND_MAP = {
     "Commercial": "trucker_commercial", "Illegal": "trucker_illegal", "Military": "trucker_military",
-    "Petrochemical": "trucker_petrochem", "Refrigerated": "trucker_fridge"
+    "Petrochemical": "trucker_petrochem", "Refrigerated": "trucker_refrigerated"
 };
 
 
 // --- UI Management Functions ---
+function updateDebugDisplay() {
+    const menuOpenEl = document.getElementById('debug-menu-open');
+    const menuEl = document.getElementById('debug-menu');
+    const menuChoiceEl = document.getElementById('debug-menu-choice');
+
+    if (menuOpenEl) menuOpenEl.textContent = `menu_open: ${String(cache.menu_open)}`;
+    if (menuEl) menuEl.textContent = `menu: "${cache.menu || ''}"`;
+    if (menuChoiceEl) menuChoiceEl.textContent = `menu_choice: "${cache.menu_choice || ''}"`;
+}
+
 function openJobSelectionMenu() {
     const modal = document.getElementById('jobSelectionModal');
     if (modal) {
@@ -51,6 +61,7 @@ function openJobSelectionMenu() {
         populateJobList();
         window.parent.postMessage({ type: 'getNamedData', keys: ['job'] }, '*');
         window.parent.postMessage({ type: 'getNamedData', keys: ['subjob'] }, '*');
+        updateDebugDisplay(); // Show initial state
     }
 }
 
@@ -65,7 +76,6 @@ function closeJobSelectionMenu(shouldPin = true) {
 }
 
 function reloadPage() {
-    // This will perform a full page refresh, like pressing F5.
     window.location.reload();
 }
 
@@ -201,6 +211,7 @@ window.addEventListener("message", (event) => {
         closeJobSelectionMenu(false);
     }
     
+    // Update cache with all incoming data
     for (const key in data) {
         if (cache[key] !== data[key]) {
             cache[key] = data[key];
@@ -213,6 +224,17 @@ document.addEventListener('DOMContentLoaded', () => {
     openBtn.addEventListener('click', openJobSelectionMenu);
     
     window.parent.postMessage({ type: 'getData' }, '*');
+
+    // Setup the debug display to refresh every 2 seconds
+    setInterval(() => {
+        // Request the latest menu data from the game
+        window.parent.postMessage({ type: 'getNamedData', keys: ['menu_open'] }, '*');
+        window.parent.postMessage({ type: 'getNamedData', keys: ['menu'] }, '*');
+        window.parent.postMessage({ type: 'getNamedData', keys: ['menu_choice'] }, '*');
+    }, 2000);
+
+    // Also set an interval to just update the display from the cache frequently
+    setInterval(updateDebugDisplay, 250);
 });
 
 const escapeListener = (e) => {

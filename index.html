@@ -28,7 +28,14 @@
             <div id="jobList" class="job-list-container flex-grow">
                 <!-- Job buttons will be inserted here by the JavaScript -->
             </div>
-            <button class="refresh-button mt-6 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors" onclick="reloadPage()">
+            <!-- ADDED: Debug Display Panel -->
+            <div id="debug-display" class="debug-panel">
+                <p class="font-bold text-gray-200">Debug Info (updates every 2s):</p>
+                <p id="debug-menu-open">menu_open: N/A</p>
+                <p id="debug-menu">menu: N/A</p>
+                <p id="debug-menu-choice">menu_choice: N/A</p>
+            </div>
+            <button class="refresh-button mt-4 w-full bg-gray-600 hover:bg-gray-700 text-white font-bold py-3 px-4 rounded-lg transition-colors" onclick="reloadPage()">
                 Refresh Page
             </button>
         </div>
