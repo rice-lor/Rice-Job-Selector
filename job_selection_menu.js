@@ -11,6 +11,7 @@ const cache = {
 };
 
 let isJobSelectionOnCooldown = false; // Cooldown flag
+let debugInterval = null; // Interval for the debug display poller
 
 // --- NUI Interaction Functions ---
 function log(message) {
@@ -62,6 +63,15 @@ function openJobSelectionMenu() {
         window.parent.postMessage({ type: 'getNamedData', keys: ['job'] }, '*');
         window.parent.postMessage({ type: 'getNamedData', keys: ['subjob'] }, '*');
         updateDebugDisplay(); // Show initial state
+
+        // Start polling for debug data only when the menu is open
+        if (!debugInterval) {
+            debugInterval = setInterval(() => {
+                window.parent.postMessage({ type: 'getNamedData', keys: ['menu_open'] }, '*');
+                window.parent.postMessage({ type: 'getNamedData', keys: ['menu'] }, '*');
+                window.parent.postMessage({ type: 'getNamedData', keys: ['menu_choice'] }, '*');
+            }, 2000);
+        }
     }
 }
 
@@ -72,6 +82,12 @@ function closeJobSelectionMenu(shouldPin = true) {
         if (shouldPin) {
             window.parent.postMessage({ type: 'pin' }, '*');
         }
+    }
+    
+    // Stop polling for debug data when the menu is closed
+    if (debugInterval) {
+        clearInterval(debugInterval);
+        debugInterval = null;
     }
 }
 
@@ -225,15 +241,7 @@ document.addEventListener('DOMContentLoaded', () => {
     
     window.parent.postMessage({ type: 'getData' }, '*');
 
-    // Setup the debug display to refresh every 2 seconds
-    setInterval(() => {
-        // Request the latest menu data from the game
-        window.parent.postMessage({ type: 'getNamedData', keys: ['menu_open'] }, '*');
-        window.parent.postMessage({ type: 'getNamedData', keys: ['menu'] }, '*');
-        window.parent.postMessage({ type: 'getNamedData', keys: ['menu_choice'] }, '*');
-    }, 2000);
-
-    // Also set an interval to just update the display from the cache frequently
+    // Set an interval to just update the display from the cache frequently
     setInterval(updateDebugDisplay, 250);
 });
 
